@@ -1,0 +1,32 @@
+services:
+  postgres:                    # ← the name you'll refer to this container by
+    image: postgres:16         # ← pull this exact image from Docker Hub
+    environment:                # ← env vars the postgres image reads on startup
+      POSTGRES_DB: photobooth      #   to auto-create a database, user, and password
+      POSTGRES_USER: photobooth
+      POSTGRES_PASSWORD: photobooth
+    ports:
+      - "5432:5432"             # ← "host_port:container_port" — makes Postgres,
+                                 #   running *inside* the container on its default
+                                 #   port 5432, reachable at localhost:5432 on your machine
+    volumes:
+      - photobooth-pgdata:/var/lib/postgresql/data
+                                 # ← without this, all your data dies when the
+                                 #   container is removed — the container's filesystem
+                                 #   is normally ephemeral. This maps a persistent
+                                 #   Docker-managed folder to where Postgres stores
+                                 #   its data files, so `docker compose down` (without -v)
+                                 #   keeps your data intact for next time.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U photobooth -d photobooth"]
+                                 # ← Docker runs this command periodically inside
+                                 #   the container to check "is Postgres actually
+                                 #   ready to accept connections yet?" — useful because
+                                 #   a container can report "running" before the
+                                 #   database inside has finished starting up
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  photobooth-pgdata:             # ← declares the named volume so Compose manages it
