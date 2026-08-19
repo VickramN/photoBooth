@@ -16,6 +16,10 @@ public class Album {
     private String cityName;
     private String countryName;
 
+    private Double lat;
+    private Double lang;
+    // I chose to abbreviate longitude as lang, if any future engineer's that are
+    // not me work on this; Just deal with it idk
     @JsonManagedReference
     @OneToMany(mappedBy = "album", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Image> images = new ArrayList<>();
@@ -78,5 +82,21 @@ public class Album {
     public void removeImage(Image image) {
         images.remove(image);
         image.setAlbum(null);
+    }
+
+    public Double getLat() {
+        return lat;
+    }
+
+    public void setLat(Double lat) {
+        this.lat = lat;
+    }
+
+    public Double getLang() {
+        return lang;
+    }
+
+    public void setLang(Double lang) {
+        this.lang = lang;
     }
 }

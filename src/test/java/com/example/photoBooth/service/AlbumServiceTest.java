@@ -20,6 +20,9 @@ class AlbumServiceTest {
     @Mock
     private AlbumRepository albumRepository;
 
+    @Mock
+    private GeocodingService geocodingService;
+
     @InjectMocks
     private AlbumService albumService;
 
@@ -77,13 +80,20 @@ class AlbumServiceTest {
         savedAlbum.setAlbumName("Test Album");
         savedAlbum.setCityName("Oswego");
         savedAlbum.setCountryName("USA");
+        savedAlbum.setLat(43.4553);
+        savedAlbum.setLang(-76.5105);
 
+        when(geocodingService.geocode("Oswego", "USA"))
+                .thenReturn(Optional.of(new GeocodingService.Coordinates(43.4553, -76.5105)));
         when(albumRepository.save(album)).thenReturn(savedAlbum);
 
         Album result = albumService.create(album);
 
         assertEquals(1, result.getId());
         assertEquals("Test Album", result.getAlbumName());
+        assertEquals(43.4553, result.getLat());
+        assertEquals(-76.5105, result.getLang());
+        verify(geocodingService).geocode("Oswego", "USA");
         verify(albumRepository).save(album);
     }
 
@@ -128,5 +138,31 @@ class AlbumServiceTest {
         assertEquals("Oswego", result.get(0).getCityName());
         assertEquals("USA", result.get(0).getCountryName());
         verify(albumRepository).findByCityNameAndCountryName("Oswego", "USA");
+    }
+
+    @Test
+    void createShouldSaveAlbumWithNullCoordinatesWhenGeocodingFails() {
+        Album album = new Album();
+        album.setAlbumName("Test Album");
+        album.setCityName("Nowhere");
+        album.setCountryName("Nowhereland");
+
+        Album savedAlbum = new Album();
+        savedAlbum.setId(2);
+        savedAlbum.setAlbumName("Test Album");
+        savedAlbum.setCityName("Nowhere");
+        savedAlbum.setCountryName("Nowhereland");
+
+        when(geocodingService.geocode("Nowhere", "Nowhereland"))
+                .thenReturn(Optional.empty());
+        when(albumRepository.save(album)).thenReturn(savedAlbum);
+
+        Album result = albumService.create(album);
+
+        assertEquals(2, result.getId());
+        assertNull(result.getLat());
+        assertNull(result.getLang());
+        verify(geocodingService).geocode("Nowhere", "Nowhereland");
+        verify(albumRepository).save(album);
     }
 }

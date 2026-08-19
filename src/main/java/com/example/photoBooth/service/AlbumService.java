@@ -15,9 +15,11 @@ public class AlbumService {
     private static final Logger logger = LoggerFactory.getLogger(AlbumService.class);
 
     private final AlbumRepository albumRepository;
+    private final GeocodingService geocodingService;
 
-    public AlbumService(AlbumRepository albumRepository) {
+    public AlbumService(AlbumRepository albumRepository, GeocodingService geocodingService) {
         this.albumRepository = albumRepository;
+        this.geocodingService = geocodingService;
     }
 
     public List<Album> findAll() {
@@ -52,6 +54,16 @@ public class AlbumService {
     public Album create(Album album) {
         logger.info("Creating album with name {}", album.getAlbumName());
 
+        Optional<GeocodingService.Coordinates> coordinates = geocodingService.geocode(album.getCityName(),
+                album.getCountryName());
+
+        if (coordinates.isPresent()) {
+            album.setLat(coordinates.get().lat());
+            album.setLang(coordinates.get().lang());
+        } else {
+            logger.warn("Geocoding returned no result for album with city {} and country {}", album.getCityName(),
+                    album.getCountryName());
+        }
         Album savedAlbum = albumRepository.save(album);
 
         logger.info("Album saved successfully with id {}", savedAlbum.getId());

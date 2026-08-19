@@ -1,0 +1,4 @@
+ALTER TABLE album ADD COLUMN lat DOUBLE PRECISION;
+ALTER TABLE album ADD COLUMN lang DOUBLE PRECISION;
+
+CREATE INDEX idx_album_lat_lang ON album (lat, lang);

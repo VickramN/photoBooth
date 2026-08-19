@@ -36,15 +36,12 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/error").permitAll()
-                        .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/albums", "/albums/**").authenticated()
                         .anyRequest().authenticated())
                 .httpBasic(basic -> {
                 })
                 .formLogin(form -> form.disable())
                 .logout(logout -> logout.disable())
-                .headers(headers -> headers
-                        .frameOptions(frame -> frame.disable()))
                 .build();
     }
 }
