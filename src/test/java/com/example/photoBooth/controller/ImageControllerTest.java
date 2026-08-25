@@ -5,6 +5,7 @@ import com.example.photoBooth.service.ImageService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -12,13 +13,15 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ImageController.class)
@@ -53,32 +56,36 @@ class ImageControllerTest {
         image.setId(1);
         image.setImg("test-image-url");
 
-        when(imageService.create(1, "test-image-url")).thenReturn(Optional.of(image));
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "photo.jpg", "image/jpeg", "fake-image-bytes".getBytes());
 
-        mockMvc.perform(post("/albums/1/images")
+        when(imageService.create(eq(1), any())).thenReturn(Optional.of(image));
+
+        mockMvc.perform(multipart("/albums/1/images")
+                .file(file)
                 .with(httpBasic("user", "password"))
-                .with(csrf())
-                .contentType("application/json")
-                .content("{\"img\":\"test-image-url\"}"))
+                .with(csrf()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.img").value("test-image-url"));
 
-        verify(imageService).create(1, "test-image-url");
+        verify(imageService).create(eq(1), any());
     }
 
     @Test
     void createImageShouldReturnNotFoundWhenAlbumMissing() throws Exception {
-        when(imageService.create(99, "test-image-url")).thenReturn(Optional.empty());
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "photo.jpg", "image/jpeg", "fake-image-bytes".getBytes());
 
-        mockMvc.perform(post("/albums/99/images")
+        when(imageService.create(eq(99), any())).thenReturn(Optional.empty());
+
+        mockMvc.perform(multipart("/albums/99/images")
+                .file(file)
                 .with(httpBasic("user", "password"))
-                .with(csrf())
-                .contentType("application/json")
-                .content("{\"img\":\"test-image-url\"}"))
+                .with(csrf()))
                 .andExpect(status().isNotFound());
 
-        verify(imageService).create(99, "test-image-url");
+        verify(imageService).create(eq(99), any());
     }
 
     @Test

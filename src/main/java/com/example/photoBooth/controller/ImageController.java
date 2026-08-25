@@ -2,12 +2,13 @@ package com.example.photoBooth.controller;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.example.photoBooth.api.CreateImageRequest;
 import com.example.photoBooth.entity.Image;
 import com.example.photoBooth.service.ImageService;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -29,14 +30,14 @@ public class ImageController {
         return imageService.findByAlbumId(albumId);
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Image> createImage(
             @PathVariable int albumId,
-            @RequestBody CreateImageRequest request) {
+            @RequestParam("file") MultipartFile file) {
 
         logger.info("POST /albums/{}/images - Creating image for album", albumId);
 
-        return imageService.create(albumId, request.getImg())
+        return imageService.create(albumId, file)
                 .map(image -> {
                     logger.info("Image created successfully with id {} for album {}", image.getId(), albumId);
                     return ResponseEntity.status(HttpStatus.CREATED).body(image);
