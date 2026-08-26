@@ -1,5 +1,7 @@
 package com.example.photoBooth.entity;
 
+import java.util.UUID;
+
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 
@@ -7,8 +9,8 @@ import jakarta.persistence.*;
 public class Image {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     private String img;
 
@@ -20,17 +22,17 @@ public class Image {
     public Image() {
     }
 
-    public Image(int id, String img, Album album) {
+    public Image(UUID id, String img, Album album) {
         this.id = id;
         this.img = img;
         this.album = album;
     }
 
-    public int getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 
@@ -50,7 +52,7 @@ public class Image {
         this.album = album;
     }
 
-    public Integer getAlbumId() {
+    public UUID getAlbumId() {
         return (album != null) ? album.getId() : null;
     }
 }

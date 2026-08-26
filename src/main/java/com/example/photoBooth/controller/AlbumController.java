@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/albums")
@@ -43,7 +44,7 @@ public class AlbumController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Album> getAlbumById(@PathVariable int id) {
+    public ResponseEntity<Album> getAlbumById(@PathVariable UUID id) {
         logger.info("GET /albums/{} - Fetching album by id", id);
 
         return albumService.findById(id)
@@ -74,7 +75,7 @@ public class AlbumController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteAlbum(@PathVariable int id) {
+    public ResponseEntity<Void> deleteAlbum(@PathVariable UUID id) {
         logger.info("DELETE /albums/{} - Attempting to delete album", id);
 
         if (albumService.findById(id).isEmpty()) {

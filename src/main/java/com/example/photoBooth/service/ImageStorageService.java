@@ -24,7 +24,7 @@ public class ImageStorageService {
         this.r2Properties = r2Properties;
     }
 
-    public String upload(int albumId, String originalFileName, String contentType, byte[] bytes) {
+    public String upload(UUID albumId, String originalFileName, String contentType, byte[] bytes) {
         String key = buildKey(albumId, originalFileName);
 
         PutObjectRequest request = PutObjectRequest.builder()
@@ -52,7 +52,7 @@ public class ImageStorageService {
         log.info("Deleted image from R2 with key {}", key);
     }
 
-    private String buildKey(int albumId, String originalFilename) {
+    private String buildKey(UUID albumId, String originalFilename) {
         String extension = extractExtension(originalFilename);
         return "albums/" + albumId + "/" + UUID.randomUUID() + extension;
     }

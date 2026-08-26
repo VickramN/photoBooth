@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/albums/{albumId}/images")
@@ -25,14 +26,14 @@ public class ImageController {
     }
 
     @GetMapping
-    public List<Image> getImagesByAlbumId(@PathVariable int albumId) {
+    public List<Image> getImagesByAlbumId(@PathVariable UUID albumId) {
         logger.info("GET /albums/{}/images - Fetching images for album", albumId);
         return imageService.findByAlbumId(albumId);
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Image> createImage(
-            @PathVariable int albumId,
+            @PathVariable UUID albumId,
             @RequestParam("file") MultipartFile file) {
 
         logger.info("POST /albums/{}/images - Creating image for album", albumId);
@@ -50,8 +51,8 @@ public class ImageController {
 
     @DeleteMapping("/{imageId}")
     public ResponseEntity<Void> deleteImage(
-            @PathVariable int albumId,
-            @PathVariable int imageId) {
+            @PathVariable UUID albumId,
+            @PathVariable UUID imageId) {
 
         logger.info("DELETE /albums/{}/images/{} - Deleting image", albumId, imageId);
 

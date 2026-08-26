@@ -5,12 +5,14 @@ import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
 
+import java.util.UUID;
+
 @Entity
 public class Album {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     private String albumName;
     private String cityName;
@@ -27,18 +29,18 @@ public class Album {
     public Album() {
     }
 
-    public Album(int id, String albumName, String cityName, String countryName) {
+    public Album(UUID id, String albumName, String cityName, String countryName) {
         this.id = id;
         this.albumName = albumName;
         this.cityName = cityName;
         this.countryName = countryName;
     }
 
-    public int getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 

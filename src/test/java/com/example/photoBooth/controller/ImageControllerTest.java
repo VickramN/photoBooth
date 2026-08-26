@@ -11,10 +11,10 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -23,78 +23,83 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.mockito.ArgumentMatchers.eq;
 
 @WebMvcTest(ImageController.class)
 class ImageControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+        private static final UUID ALBUM_ID = UUID.randomUUID();
+        private static final UUID IMAGE_ID = UUID.randomUUID();
+        private static final UUID MISSING_ALBUM_ID = UUID.randomUUID();
 
-    @MockitoBean
-    private ImageService imageService;
+        @Autowired
+        private MockMvc mockMvc;
 
-    @Test
-    void getImagesByAlbumIdShouldReturnImages() throws Exception {
-        Image image = new Image();
-        image.setId(1);
-        image.setImg("test-image-url");
+        @MockitoBean
+        private ImageService imageService;
 
-        when(imageService.findByAlbumId(1)).thenReturn(List.of(image));
+        @Test
+        void getImagesByAlbumIdShouldReturnImages() throws Exception {
+                Image image = new Image();
+                image.setId(IMAGE_ID);
+                image.setImg("test-image-url");
 
-        mockMvc.perform(get("/albums/1/images")
-                .with(httpBasic("user", "password")))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].img").value("test-image-url"));
+                when(imageService.findByAlbumId(ALBUM_ID)).thenReturn(List.of(image));
 
-        verify(imageService).findByAlbumId(1);
-    }
+                mockMvc.perform(get("/albums/" + ALBUM_ID + "/images")
+                                .with(httpBasic("user", "password")))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$", hasSize(1)))
+                                .andExpect(jsonPath("$[0].img").value("test-image-url"));
 
-    @Test
-    void createImageShouldReturnCreatedImageWhenAlbumExists() throws Exception {
-        Image image = new Image();
-        image.setId(1);
-        image.setImg("test-image-url");
+                verify(imageService).findByAlbumId(ALBUM_ID);
+        }
 
-        MockMultipartFile file = new MockMultipartFile(
-                "file", "photo.jpg", "image/jpeg", "fake-image-bytes".getBytes());
+        @Test
+        void createImageShouldReturnCreatedImageWhenAlbumExists() throws Exception {
+                Image image = new Image();
+                image.setId(IMAGE_ID);
+                image.setImg("test-image-url");
 
-        when(imageService.create(eq(1), any())).thenReturn(Optional.of(image));
+                MockMultipartFile file = new MockMultipartFile(
+                                "file", "photo.jpg", "image/jpeg", "fake-image-bytes".getBytes());
 
-        mockMvc.perform(multipart("/albums/1/images")
-                .file(file)
-                .with(httpBasic("user", "password"))
-                .with(csrf()))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.img").value("test-image-url"));
+                when(imageService.create(eq(ALBUM_ID), any())).thenReturn(Optional.of(image));
 
-        verify(imageService).create(eq(1), any());
-    }
+                mockMvc.perform(multipart("/albums/" + ALBUM_ID + "/images")
+                                .file(file)
+                                .with(httpBasic("user", "password"))
+                                .with(csrf()))
+                                .andExpect(status().isCreated())
+                                .andExpect(jsonPath("$.id").value(IMAGE_ID.toString()))
+                                .andExpect(jsonPath("$.img").value("test-image-url"));
 
-    @Test
-    void createImageShouldReturnNotFoundWhenAlbumMissing() throws Exception {
-        MockMultipartFile file = new MockMultipartFile(
-                "file", "photo.jpg", "image/jpeg", "fake-image-bytes".getBytes());
+                verify(imageService).create(eq(ALBUM_ID), any());
+        }
 
-        when(imageService.create(eq(99), any())).thenReturn(Optional.empty());
+        @Test
+        void createImageShouldReturnNotFoundWhenAlbumMissing() throws Exception {
+                MockMultipartFile file = new MockMultipartFile(
+                                "file", "photo.jpg", "image/jpeg", "fake-image-bytes".getBytes());
 
-        mockMvc.perform(multipart("/albums/99/images")
-                .file(file)
-                .with(httpBasic("user", "password"))
-                .with(csrf()))
-                .andExpect(status().isNotFound());
+                when(imageService.create(eq(MISSING_ALBUM_ID), any())).thenReturn(Optional.empty());
 
-        verify(imageService).create(eq(99), any());
-    }
+                mockMvc.perform(multipart("/albums/" + MISSING_ALBUM_ID + "/images")
+                                .file(file)
+                                .with(httpBasic("user", "password"))
+                                .with(csrf()))
+                                .andExpect(status().isNotFound());
 
-    @Test
-    void deleteImageShouldReturnNoContent() throws Exception {
-        mockMvc.perform(delete("/albums/1/images/2")
-                .with(httpBasic("user", "password"))
-                .with(csrf()))
-                .andExpect(status().isNoContent());
+                verify(imageService).create(eq(MISSING_ALBUM_ID), any());
+        }
 
-        verify(imageService).deleteByAlbumIdAndImageId(1, 2);
-    }
+        @Test
+        void deleteImageShouldReturnNoContent() throws Exception {
+                mockMvc.perform(delete("/albums/" + ALBUM_ID + "/images/" + IMAGE_ID)
+                                .with(httpBasic("user", "password"))
+                                .with(csrf()))
+                                .andExpect(status().isNoContent());
+
+                verify(imageService).deleteByAlbumIdAndImageId(ALBUM_ID, IMAGE_ID);
+        }
 }

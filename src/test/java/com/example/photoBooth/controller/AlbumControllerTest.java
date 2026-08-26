@@ -12,6 +12,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
@@ -24,6 +25,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(AlbumController.class)
 class AlbumControllerTest {
 
+    private static final UUID ALBUM_ID = UUID.randomUUID();
+    private static final UUID MISSING_ID = UUID.randomUUID();
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -33,7 +37,7 @@ class AlbumControllerTest {
     @Test
     void getAlbumsShouldReturnAlbums() throws Exception {
         Album album = new Album();
-        album.setId(1);
+        album.setId(ALBUM_ID);
         album.setAlbumName("Test Album");
         album.setCityName("Oswego");
         album.setCountryName("USA");
@@ -52,34 +56,34 @@ class AlbumControllerTest {
     @Test
     void getAlbumByIdShouldReturnAlbumWhenFound() throws Exception {
         Album album = new Album();
-        album.setId(1);
+        album.setId(ALBUM_ID);
         album.setAlbumName("Test Album");
 
-        when(albumService.findById(1)).thenReturn(Optional.of(album));
+        when(albumService.findById(ALBUM_ID)).thenReturn(Optional.of(album));
 
-        mockMvc.perform(get("/albums/1")
+        mockMvc.perform(get("/albums/" + ALBUM_ID)
                 .with(httpBasic("user", "password")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.albumName").value("Test Album"));
 
-        verify(albumService).findById(1);
+        verify(albumService).findById(ALBUM_ID);
     }
 
     @Test
     void getAlbumByIdShouldReturnNotFoundWhenMissing() throws Exception {
-        when(albumService.findById(99)).thenReturn(Optional.empty());
+        when(albumService.findById(MISSING_ID)).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/albums/99")
+        mockMvc.perform(get("/albums/" + MISSING_ID)
                 .with(httpBasic("user", "password")))
                 .andExpect(status().isNotFound());
 
-        verify(albumService).findById(99);
+        verify(albumService).findById(MISSING_ID);
     }
 
     @Test
     void createAlbumShouldReturnCreatedAlbum() throws Exception {
         Album savedAlbum = new Album();
-        savedAlbum.setId(1);
+        savedAlbum.setId(ALBUM_ID);
         savedAlbum.setAlbumName("Test Album");
         savedAlbum.setCityName("Oswego");
         savedAlbum.setCountryName("USA");
@@ -92,7 +96,7 @@ class AlbumControllerTest {
                 .contentType("application/json")
                 .content("{\"albumName\":\"Test Album\",\"cityName\":\"Oswego\",\"countryName\":\"USA\"}"))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.id").value(ALBUM_ID.toString()))
                 .andExpect(jsonPath("$.albumName").value("Test Album"));
 
         verify(albumService).create(any(Album.class));
@@ -101,36 +105,36 @@ class AlbumControllerTest {
     @Test
     void deleteAlbumShouldReturnNoContentWhenAlbumExists() throws Exception {
         Album album = new Album();
-        album.setId(1);
+        album.setId(ALBUM_ID);
 
-        when(albumService.findById(1)).thenReturn(Optional.of(album));
+        when(albumService.findById(ALBUM_ID)).thenReturn(Optional.of(album));
 
-        mockMvc.perform(delete("/albums/1")
+        mockMvc.perform(delete("/albums/" + ALBUM_ID)
                 .with(httpBasic("user", "password"))
                 .with(csrf()))
                 .andExpect(status().isNoContent());
 
-        verify(albumService).findById(1);
-        verify(albumService).deleteById(1);
+        verify(albumService).findById(ALBUM_ID);
+        verify(albumService).deleteById(ALBUM_ID);
     }
 
     @Test
     void deleteAlbumShouldReturnNotFoundWhenAlbumMissing() throws Exception {
-        when(albumService.findById(99)).thenReturn(Optional.empty());
+        when(albumService.findById(MISSING_ID)).thenReturn(Optional.empty());
 
-        mockMvc.perform(delete("/albums/99")
+        mockMvc.perform(delete("/albums/" + MISSING_ID)
                 .with(httpBasic("user", "password"))
                 .with(csrf()))
                 .andExpect(status().isNotFound());
 
-        verify(albumService).findById(99);
-        Mockito.verify(albumService, Mockito.never()).deleteById(99);
+        verify(albumService).findById(MISSING_ID);
+        Mockito.verify(albumService, Mockito.never()).deleteById(MISSING_ID);
     }
 
     @Test
     void getAlbumsByCityShouldReturnMatchingAlbums() throws Exception {
         Album album = new Album();
-        album.setId(1);
+        album.setId(ALBUM_ID);
         album.setAlbumName("Test Album");
         album.setCityName("Oswego");
         album.setCountryName("USA");
@@ -150,7 +154,7 @@ class AlbumControllerTest {
     @Test
     void getAlbumsByCityAndCountryShouldReturnMatchingAlbums() throws Exception {
         Album album = new Album();
-        album.setId(1);
+        album.setId(ALBUM_ID);
         album.setAlbumName("Test Album");
         album.setCityName("Oswego");
         album.setCountryName("USA");

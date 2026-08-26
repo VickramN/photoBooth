@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class AlbumService {
@@ -37,7 +38,7 @@ public class AlbumService {
         return albumRepository.findByCityNameAndCountryName(cityName, countryName);
     }
 
-    public Optional<Album> findById(int id) {
+    public Optional<Album> findById(UUID id) {
         logger.info("Searching for album with id {}", id);
 
         Optional<Album> album = albumRepository.findById(id);
@@ -71,7 +72,7 @@ public class AlbumService {
         return savedAlbum;
     }
 
-    public void deleteById(int id) {
+    public void deleteById(UUID id) {
         logger.info("Deleting album with id {}", id);
 
         albumRepository.deleteById(id);

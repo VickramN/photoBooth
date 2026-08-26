@@ -15,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class ImageService {
@@ -32,13 +33,13 @@ public class ImageService {
         this.imageStorageService = imageStorageService;
     }
 
-    public List<Image> findByAlbumId(int albumId) {
+    public List<Image> findByAlbumId(UUID albumId) {
         logger.info("Fetching images for album {}", albumId);
 
         return imageRepository.findByAlbum_Id(albumId);
     }
 
-    public Optional<Image> findById(int id) {
+    public Optional<Image> findById(UUID id) {
         logger.info("Searching for image with id {}", id);
 
         Optional<Image> image = imageRepository.findById(id);
@@ -52,7 +53,7 @@ public class ImageService {
         return image;
     }
 
-    public Optional<Image> create(int albumId, MultipartFile file) {
+    public Optional<Image> create(UUID albumId, MultipartFile file) {
         logger.info("Creating image for album {}", albumId);
 
         Optional<Album> optionalAlbum = albumRepository.findById(albumId);
@@ -87,12 +88,12 @@ public class ImageService {
     }
 
     @Transactional
-    public void deleteByAlbumIdAndImageId(int albumId, int imageId) {
+    public void deleteByAlbumIdAndImageId(UUID albumId, UUID imageId) {
         logger.info("Deleting image {} from album {}", imageId, albumId);
 
         Optional<Image> optionalImage = imageRepository.findById(imageId);
 
-        if (optionalImage.isEmpty() || !Integer.valueOf(albumId).equals(optionalImage.get().getAlbumId())) {
+        if (optionalImage.isEmpty() || !albumId.equals(optionalImage.get().getAlbumId())) {
             logger.warn("Cannot delete. Image {} not found in album {}", imageId, albumId);
             return;
         }

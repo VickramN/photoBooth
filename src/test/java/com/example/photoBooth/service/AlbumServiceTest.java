@@ -10,12 +10,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class AlbumServiceTest {
+
+    private static final UUID ALBUM_ID = UUID.randomUUID();
+    private static final UUID ALBUM_ID_2 = UUID.randomUUID();
+    private static final UUID MISSING_ID = UUID.randomUUID();
 
     @Mock
     private AlbumRepository albumRepository;
@@ -29,7 +34,7 @@ class AlbumServiceTest {
     @Test
     void findAllShouldReturnAllAlbums() {
         Album album = new Album();
-        album.setId(1);
+        album.setId(ALBUM_ID);
         album.setAlbumName("Test Album");
         album.setCityName("Oswego");
         album.setCountryName("USA");
@@ -46,26 +51,26 @@ class AlbumServiceTest {
     @Test
     void findByIdShouldReturnAlbumWhenFound() {
         Album album = new Album();
-        album.setId(1);
+        album.setId(ALBUM_ID);
         album.setAlbumName("Test Album");
 
-        when(albumRepository.findById(1)).thenReturn(Optional.of(album));
+        when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
 
-        Optional<Album> result = albumService.findById(1);
+        Optional<Album> result = albumService.findById(ALBUM_ID);
 
         assertTrue(result.isPresent());
         assertEquals("Test Album", result.get().getAlbumName());
-        verify(albumRepository).findById(1);
+        verify(albumRepository).findById(ALBUM_ID);
     }
 
     @Test
     void findByIdShouldReturnEmptyWhenNotFound() {
-        when(albumRepository.findById(99)).thenReturn(Optional.empty());
+        when(albumRepository.findById(MISSING_ID)).thenReturn(Optional.empty());
 
-        Optional<Album> result = albumService.findById(99);
+        Optional<Album> result = albumService.findById(MISSING_ID);
 
         assertTrue(result.isEmpty());
-        verify(albumRepository).findById(99);
+        verify(albumRepository).findById(MISSING_ID);
     }
 
     @Test
@@ -76,7 +81,7 @@ class AlbumServiceTest {
         album.setCountryName("USA");
 
         Album savedAlbum = new Album();
-        savedAlbum.setId(1);
+        savedAlbum.setId(ALBUM_ID);
         savedAlbum.setAlbumName("Test Album");
         savedAlbum.setCityName("Oswego");
         savedAlbum.setCountryName("USA");
@@ -89,7 +94,7 @@ class AlbumServiceTest {
 
         Album result = albumService.create(album);
 
-        assertEquals(1, result.getId());
+        assertEquals(ALBUM_ID, result.getId());
         assertEquals("Test Album", result.getAlbumName());
         assertEquals(43.4553, result.getLat());
         assertEquals(-76.5105, result.getLang());
@@ -99,15 +104,15 @@ class AlbumServiceTest {
 
     @Test
     void deleteByIdShouldDeleteAlbum() {
-        albumService.deleteById(1);
+        albumService.deleteById(ALBUM_ID);
 
-        verify(albumRepository).deleteById(1);
+        verify(albumRepository).deleteById(ALBUM_ID);
     }
 
     @Test
     void findByCityNameShouldReturnMatchingAlbums() {
         Album album = new Album();
-        album.setId(1);
+        album.setId(ALBUM_ID);
         album.setAlbumName("Test Album");
         album.setCityName("Oswego");
         album.setCountryName("USA");
@@ -124,7 +129,7 @@ class AlbumServiceTest {
     @Test
     void findByCityNameAndCountryNameShouldReturnMatchingAlbums() {
         Album album = new Album();
-        album.setId(1);
+        album.setId(ALBUM_ID);
         album.setAlbumName("Test Album");
         album.setCityName("Oswego");
         album.setCountryName("USA");
@@ -148,7 +153,7 @@ class AlbumServiceTest {
         album.setCountryName("Nowhereland");
 
         Album savedAlbum = new Album();
-        savedAlbum.setId(2);
+        savedAlbum.setId(ALBUM_ID_2);
         savedAlbum.setAlbumName("Test Album");
         savedAlbum.setCityName("Nowhere");
         savedAlbum.setCountryName("Nowhereland");
@@ -159,7 +164,7 @@ class AlbumServiceTest {
 
         Album result = albumService.create(album);
 
-        assertEquals(2, result.getId());
+        assertEquals(ALBUM_ID_2, result.getId());
         assertNull(result.getLat());
         assertNull(result.getLang());
         verify(geocodingService).geocode("Nowhere", "Nowhereland");
