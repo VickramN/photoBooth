@@ -1,5 +1,6 @@
 package com.example.photoBooth.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import java.util.ArrayList;
@@ -22,6 +23,13 @@ public class Album {
     private Double lang;
     // I chose to abbreviate longitude as lang, if any future engineer's that are
     // not me work on this; Just deal with it idk
+
+
+    @ManyToOne
+    @JoinColumn(name = "owner_id", nullable = false)
+    @JsonIgnore
+    private User owner;
+
     @JsonManagedReference
     @OneToMany(mappedBy = "album", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Image> images = new ArrayList<>();
@@ -100,5 +108,18 @@ public class Album {
 
     public void setLang(Double lang) {
         this.lang = lang;
+        
+    }
+
+    public User getOwner(){
+        return owner;
+    }
+
+    public void setOwner(User owner){
+        this.owner = owner;
+    }
+
+    public UUID getOwnerId(){
+        return (owner != null) ? owner.getId() : null;
     }
 }
