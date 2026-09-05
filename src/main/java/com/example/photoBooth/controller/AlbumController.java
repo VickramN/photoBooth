@@ -4,9 +4,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.example.photoBooth.api.CreateAlbumRequest;
 import com.example.photoBooth.entity.Album;
+import com.example.photoBooth.security.UserPrincipal;
 import com.example.photoBooth.service.AlbumService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,27 +29,31 @@ public class AlbumController {
     @GetMapping
     public List<Album> getAlbums(
             @RequestParam(required = false) String city,
-            @RequestParam(required = false) String country) {
+            @RequestParam(required = false) String country,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        UUID ownerId = principal.getId();
 
         if (city != null && country != null) {
             logger.info("GET /albums?city={}&country={} - Fetching albums by city and country", city, country);
-            return albumService.findByCityNameAndCountryName(city, country);
+            return albumService.findByCityNameAndCountryName(city, country, ownerId);
         }
 
         if (city != null) {
             logger.info("GET /albums?city={} - Fetching albums by city", city);
-            return albumService.findByCityName(city);
+            return albumService.findByCityName(city, ownerId);
         }
 
         logger.info("GET /albums - Fetching all albums");
-        return albumService.findAll();
+        return albumService.findAll(ownerId);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Album> getAlbumById(@PathVariable UUID id) {
+    public ResponseEntity<Album> getAlbumById(@PathVariable UUID id,
+                                               @AuthenticationPrincipal UserPrincipal principal) {
         logger.info("GET /albums/{} - Fetching album by id", id);
 
-        return albumService.findById(id)
+        return albumService.findById(id, principal.getId())
                 .map(album -> {
                     logger.info("Album found with id {}", id);
                     return ResponseEntity.ok(album);
@@ -59,7 +65,8 @@ public class AlbumController {
     }
 
     @PostMapping
-    public ResponseEntity<Album> createAlbum(@RequestBody CreateAlbumRequest request) {
+    public ResponseEntity<Album> createAlbum(@RequestBody CreateAlbumRequest request,
+                                              @AuthenticationPrincipal UserPrincipal principal) {
         logger.info("POST /albums - Creating album with name {}", request.getAlbumName());
 
         Album album = new Album();
@@ -67,7 +74,7 @@ public class AlbumController {
         album.setCityName(request.getCityName());
         album.setCountryName(request.getCountryName());
 
-        Album savedAlbum = albumService.create(album);
+        Album savedAlbum = albumService.create(album, principal.getId());
 
         logger.info("Album created successfully with id {}", savedAlbum.getId());
 
@@ -75,17 +82,18 @@ public class AlbumController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteAlbum(@PathVariable UUID id) {
+    public ResponseEntity<Void> deleteAlbum(@PathVariable UUID id,
+                                             @AuthenticationPrincipal UserPrincipal principal) {
         logger.info("DELETE /albums/{} - Attempting to delete album", id);
 
-        if (albumService.findById(id).isEmpty()) {
+        boolean deleted = albumService.deleteById(id, principal.getId());
+
+        if (!deleted) {
             logger.warn("Cannot delete album. Album not found with id {}", id);
             return ResponseEntity.notFound().build();
         }
 
-        albumService.deleteById(id);
         logger.info("Album deleted successfully with id {}", id);
-
         return ResponseEntity.noContent().build();
     }
 }

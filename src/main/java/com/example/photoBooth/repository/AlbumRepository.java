@@ -8,7 +8,9 @@ import java.util.UUID;
 
 public interface AlbumRepository extends JpaRepository<Album, UUID> {
 
-    List<Album> findByCityName(String cityName);
+    List<Album> findByOwner_Id(UUID ownerId);
 
-    List<Album> findByCityNameAndCountryName(String cityName, String countryName);
+    List<Album> findByOwner_IdAndCityName(UUID ownerId, String cityName);
+
+    List<Album> findByOwner_IdAndCityNameAndCountryName(UUID ownerId, String cityName, String countryName);
 }
