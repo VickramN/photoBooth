@@ -8,6 +8,7 @@ import com.example.photoBooth.security.UserPrincipal;
 import com.example.photoBooth.service.AlbumService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -46,6 +47,14 @@ public class AlbumController {
 
         logger.info("GET /albums - Fetching all albums");
         return albumService.findAll(ownerId);
+    }
+
+
+    @GetMapping("/admin/all")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<Album> getAllAlbumsAdmin(){
+        logger.info("GET /albums/admin/all - Fetching all albums (admin only)");
+        return albumService.findAllAdmin();
     }
 
     @GetMapping("/{id}")

@@ -33,6 +33,11 @@ public class AlbumService {
         return albumRepository.findByOwner_Id(ownerId);
     }
 
+    public List<Album> findAllAdmin() {
+        logger.info("Fetching all albums (admin)");
+        return albumRepository.findAll();
+    }
+
     public List<Album> findByCityName(String cityName, UUID ownerId) {
         logger.info("Fetching albums by city {} for owner {}", cityName, ownerId);
         return albumRepository.findByOwner_IdAndCityName(ownerId, cityName);
