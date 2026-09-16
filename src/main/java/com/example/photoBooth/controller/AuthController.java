@@ -1,6 +1,8 @@
 package com.example.photoBooth.controller;
 
 import com.example.photoBooth.api.AuthResponse;
+import com.example.photoBooth.api.ForgotPasswordRequest;
+import com.example.photoBooth.api.ResetPasswordRequest;
 import com.example.photoBooth.api.LoginRequest;
 import com.example.photoBooth.api.RegisterRequest;
 import com.example.photoBooth.service.AuthService;
@@ -46,6 +48,25 @@ public class AuthController {
         } catch (BadCredentialsException e) {
             logger.warn("Login failed for {}", request.getUsername());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPassword(@RequestBody ForgotPasswordRequest request){
+        logger.info("POST /auth/forgot-password - Request for {}", request.getUsername());
+        authService.requestPasswordReset(request.getUsername());
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("reset-password")
+    public ResponseEntity<Void> resetPassword(@RequestBody ResetPasswordRequest request){
+        logger.info("POST /auth/reset-password - Attempting reset");
+        try{
+            authService.resetPassword(request.getToken(), request.getNewPassword());
+            return ResponseEntity.ok().build();
+        } catch(IllegalArgumentException e){
+            logger.warn("Password reset failed: {}", e .getMessage());
+            return ResponseEntity.badRequest().build();
         }
     }
 }
