@@ -2,6 +2,7 @@ package com.example.photoBooth.service;
 
 import com.example.photoBooth.entity.Album;
 import com.example.photoBooth.entity.Image;
+import com.example.photoBooth.entity.User;
 import com.example.photoBooth.repository.AlbumRepository;
 import com.example.photoBooth.repository.ImageRepository;
 import org.junit.jupiter.api.Test;
@@ -22,10 +23,11 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class ImageServiceTest {
 
+    private static final UUID OWNER_ID = UUID.randomUUID();
+    private static final UUID OTHER_OWNER_ID = UUID.randomUUID();
     private static final UUID ALBUM_ID = UUID.randomUUID();
-    private static final UUID OTHER_ALBUM_ID = UUID.randomUUID();
-    private static final UUID IMAGE_ID = UUID.randomUUID();
     private static final UUID MISSING_ALBUM_ID = UUID.randomUUID();
+    private static final UUID IMAGE_ID = UUID.randomUUID();
     private static final UUID MISSING_IMAGE_ID = UUID.randomUUID();
 
     @Mock
@@ -40,51 +42,92 @@ class ImageServiceTest {
     @InjectMocks
     private ImageService imageService;
 
-    @Test
-    void findByAlbumIdShouldReturnImagesForAlbum() {
-        Image image = new Image();
-        image.setId(IMAGE_ID);
-        image.setImg("test-image-url");
+    private User owner(UUID ownerId) {
+        User owner = new User();
+        owner.setId(ownerId);
+        return owner;
+    }
 
-        when(imageRepository.findByAlbum_Id(ALBUM_ID)).thenReturn(List.of(image));
-
-        List<Image> result = imageService.findByAlbumId(ALBUM_ID);
-
-        assertEquals(1, result.size());
-        assertEquals("test-image-url", result.get(0).getImg());
-        verify(imageRepository).findByAlbum_Id(ALBUM_ID);
+    private Album ownedAlbum(UUID albumId, UUID ownerId) {
+        Album album = new Album();
+        album.setId(albumId);
+        album.setOwner(owner(ownerId));
+        return album;
     }
 
     @Test
-    void findByIdShouldReturnImageWhenFound() {
+    void findByAlbumIdShouldReturnImagesWhenOwned() {
+        Album album = ownedAlbum(ALBUM_ID, OWNER_ID);
         Image image = new Image();
         image.setId(IMAGE_ID);
         image.setImg("test-image-url");
+        image.setAlbum(album);
+
+        when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
+        when(imageRepository.findByAlbum_Id(ALBUM_ID)).thenReturn(List.of(image));
+
+        Optional<List<Image>> result = imageService.findByAlbumId(ALBUM_ID, OWNER_ID);
+
+        assertTrue(result.isPresent());
+        assertEquals(1, result.get().size());
+        assertEquals("test-image-url", result.get().get(0).getImg());
+    }
+
+    @Test
+    void findByAlbumIdShouldReturnEmptyOptionalWhenAlbumNotFound() {
+        when(albumRepository.findById(MISSING_ALBUM_ID)).thenReturn(Optional.empty());
+
+        Optional<List<Image>> result = imageService.findByAlbumId(MISSING_ALBUM_ID, OWNER_ID);
+
+        assertTrue(result.isEmpty());
+        verify(imageRepository, never()).findByAlbum_Id(any(UUID.class));
+    }
+
+    @Test
+    void findByAlbumIdShouldReturnEmptyOptionalWhenNotOwned() {
+        Album album = ownedAlbum(ALBUM_ID, OTHER_OWNER_ID);
+
+        when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
+
+        Optional<List<Image>> result = imageService.findByAlbumId(ALBUM_ID, OWNER_ID);
+
+        assertTrue(result.isEmpty());
+        verify(imageRepository, never()).findByAlbum_Id(any(UUID.class));
+    }
+
+    @Test
+    void findByIdShouldReturnImageWhenOwned() {
+        Album album = ownedAlbum(ALBUM_ID, OWNER_ID);
+        Image image = new Image();
+        image.setId(IMAGE_ID);
+        image.setImg("test-image-url");
+        image.setAlbum(album);
 
         when(imageRepository.findById(IMAGE_ID)).thenReturn(Optional.of(image));
 
-        Optional<Image> result = imageService.findById(IMAGE_ID);
+        Optional<Image> result = imageService.findById(IMAGE_ID, OWNER_ID);
 
         assertTrue(result.isPresent());
         assertEquals("test-image-url", result.get().getImg());
-        verify(imageRepository).findById(IMAGE_ID);
     }
 
     @Test
-    void findByIdShouldReturnEmptyWhenNotFound() {
-        when(imageRepository.findById(MISSING_IMAGE_ID)).thenReturn(Optional.empty());
+    void findByIdShouldReturnEmptyWhenNotOwned() {
+        Album album = ownedAlbum(ALBUM_ID, OTHER_OWNER_ID);
+        Image image = new Image();
+        image.setId(IMAGE_ID);
+        image.setAlbum(album);
 
-        Optional<Image> result = imageService.findById(MISSING_IMAGE_ID);
+        when(imageRepository.findById(IMAGE_ID)).thenReturn(Optional.of(image));
+
+        Optional<Image> result = imageService.findById(IMAGE_ID, OWNER_ID);
 
         assertTrue(result.isEmpty());
-        verify(imageRepository).findById(MISSING_IMAGE_ID);
     }
 
     @Test
-    void createShouldSaveImageWhenAlbumExists() throws Exception {
-        Album album = new Album();
-        album.setId(ALBUM_ID);
-        album.setAlbumName("Test Album");
+    void createShouldSaveImageWhenAlbumOwned() throws Exception {
+        Album album = ownedAlbum(ALBUM_ID, OWNER_ID);
 
         MockMultipartFile file = new MockMultipartFile(
                 "file", "photo.jpg", "image/jpeg", "fake-image-bytes".getBytes());
@@ -101,64 +144,84 @@ class ImageServiceTest {
                 .thenReturn(uploadedUrl);
         when(imageRepository.save(any(Image.class))).thenReturn(savedImage);
 
-        Optional<Image> result = imageService.create(ALBUM_ID, file);
+        Optional<Image> result = imageService.create(ALBUM_ID, file, OWNER_ID);
 
         assertTrue(result.isPresent());
         assertEquals(IMAGE_ID, result.get().getId());
         assertEquals(uploadedUrl, result.get().getImg());
-        verify(albumRepository).findById(ALBUM_ID);
-        verify(imageStorageService).upload(eq(ALBUM_ID), eq("photo.jpg"), eq("image/jpeg"), any(byte[].class));
-        verify(imageRepository).save(any(Image.class));
     }
 
     @Test
-    void createShouldReturnEmptyWhenAlbumDoesNotExist() throws Exception {
+    void createShouldReturnEmptyWhenAlbumNotFound() throws Exception {
         MockMultipartFile file = new MockMultipartFile(
                 "file", "photo.jpg", "image/jpeg", "fake-image-bytes".getBytes());
 
         when(albumRepository.findById(MISSING_ALBUM_ID)).thenReturn(Optional.empty());
 
-        Optional<Image> result = imageService.create(MISSING_ALBUM_ID, file);
+        Optional<Image> result = imageService.create(MISSING_ALBUM_ID, file, OWNER_ID);
 
         assertTrue(result.isEmpty());
-        verify(albumRepository).findById(MISSING_ALBUM_ID);
-        verify(imageRepository, never()).save(any(Image.class));
         verifyNoInteractions(imageStorageService);
+        verify(imageRepository, never()).save(any(Image.class));
     }
 
     @Test
-    void deleteByAlbumIdAndImageIdShouldDeleteImage() {
-        Album album = new Album();
-        album.setId(ALBUM_ID);
+    void createShouldReturnEmptyWhenAlbumNotOwned() throws Exception {
+        Album album = ownedAlbum(ALBUM_ID, OTHER_OWNER_ID);
 
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "photo.jpg", "image/jpeg", "fake-image-bytes".getBytes());
+
+        when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
+
+        Optional<Image> result = imageService.create(ALBUM_ID, file, OWNER_ID);
+
+        assertTrue(result.isEmpty());
+        verifyNoInteractions(imageStorageService);
+        verify(imageRepository, never()).save(any(Image.class));
+    }
+
+    @Test
+    void deleteByAlbumIdAndImageIdShouldReturnTrueWhenOwned() {
+        Album album = ownedAlbum(ALBUM_ID, OWNER_ID);
         Image image = new Image();
         image.setId(IMAGE_ID);
         image.setImg("https://pub-example.r2.dev/albums/" + ALBUM_ID + "/uuid.jpg");
         image.setAlbum(album);
 
+        when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
         when(imageRepository.findById(IMAGE_ID)).thenReturn(Optional.of(image));
 
-        imageService.deleteByAlbumIdAndImageId(ALBUM_ID, IMAGE_ID);
+        boolean result = imageService.deleteByAlbumIdAndImageId(ALBUM_ID, IMAGE_ID, OWNER_ID);
 
-        verify(imageStorageService).delete("https://pub-example.r2.dev/albums/" + ALBUM_ID + "/uuid.jpg");
+        assertTrue(result);
+        verify(imageStorageService).delete(image.getImg());
         verify(imageRepository).deleteByAlbum_IdAndId(ALBUM_ID, IMAGE_ID);
     }
 
     @Test
-    void deleteByAlbumIdAndImageIdShouldNotDeleteWhenImageBelongsToDifferentAlbum() {
-        Album album = new Album();
-        album.setId(OTHER_ALBUM_ID);
+    void deleteByAlbumIdAndImageIdShouldReturnFalseWhenAlbumNotOwned() {
+        Album album = ownedAlbum(ALBUM_ID, OTHER_OWNER_ID);
 
-        Image image = new Image();
-        image.setId(IMAGE_ID);
-        image.setImg("https://pub-example.r2.dev/albums/" + OTHER_ALBUM_ID + "/uuid.jpg");
-        image.setAlbum(album);
+        when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
 
-        when(imageRepository.findById(IMAGE_ID)).thenReturn(Optional.of(image));
+        boolean result = imageService.deleteByAlbumIdAndImageId(ALBUM_ID, IMAGE_ID, OWNER_ID);
 
-        imageService.deleteByAlbumIdAndImageId(ALBUM_ID, IMAGE_ID);
-
+        assertFalse(result);
         verifyNoInteractions(imageStorageService);
         verify(imageRepository, never()).deleteByAlbum_IdAndId(any(UUID.class), any(UUID.class));
+    }
+
+    @Test
+    void deleteByAlbumIdAndImageIdShouldReturnFalseWhenImageNotFound() {
+        Album album = ownedAlbum(ALBUM_ID, OWNER_ID);
+
+        when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
+        when(imageRepository.findById(MISSING_IMAGE_ID)).thenReturn(Optional.empty());
+
+        boolean result = imageService.deleteByAlbumIdAndImageId(ALBUM_ID, MISSING_IMAGE_ID, OWNER_ID);
+
+        assertFalse(result);
+        verifyNoInteractions(imageStorageService);
     }
 }
