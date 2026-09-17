@@ -27,39 +27,46 @@ public class ImageService {
     private final ImageStorageService imageStorageService;
 
     public ImageService(ImageRepository imageRepository, AlbumRepository albumRepository,
-            ImageStorageService imageStorageService) {
+                         ImageStorageService imageStorageService) {
         this.imageRepository = imageRepository;
         this.albumRepository = albumRepository;
         this.imageStorageService = imageStorageService;
     }
 
-    public List<Image> findByAlbumId(UUID albumId) {
-        logger.info("Fetching images for album {}", albumId);
+    public Optional<List<Image>> findByAlbumId(UUID albumId, UUID ownerId) {
+        logger.info("Fetching images for album {} for owner {}", albumId, ownerId);
 
-        return imageRepository.findByAlbum_Id(albumId);
+        if (!isAlbumOwnedBy(albumId, ownerId)) {
+            logger.warn("Cannot fetch images. Album {} not found or not owned by {}", albumId, ownerId);
+            return Optional.empty();
+        }
+
+        return Optional.of(imageRepository.findByAlbum_Id(albumId));
     }
 
-    public Optional<Image> findById(UUID id) {
-        logger.info("Searching for image with id {}", id);
+    public Optional<Image> findById(UUID id, UUID ownerId) {
+        logger.info("Searching for image with id {} for owner {}", id, ownerId);
 
-        Optional<Image> image = imageRepository.findById(id);
+        Optional<Image> image = imageRepository.findById(id)
+                .filter(img -> img.getAlbum() != null && ownerId.equals(img.getAlbum().getOwnerId()));
 
         if (image.isPresent()) {
             logger.info("Image found with id {}", id);
         } else {
-            logger.warn("Image not found with id {}", id);
+            logger.warn("Image not found (or not owned) with id {}", id);
         }
 
         return image;
     }
 
-    public Optional<Image> create(UUID albumId, MultipartFile file) {
-        logger.info("Creating image for album {}", albumId);
+    public Optional<Image> create(UUID albumId, MultipartFile file, UUID ownerId) {
+        logger.info("Creating image for album {} for owner {}", albumId, ownerId);
 
-        Optional<Album> optionalAlbum = albumRepository.findById(albumId);
+        Optional<Album> optionalAlbum = albumRepository.findById(albumId)
+                .filter(album -> ownerId.equals(album.getOwnerId()));
 
         if (optionalAlbum.isEmpty()) {
-            logger.warn("Cannot create image. Album not found with id {}", albumId);
+            logger.warn("Cannot create image. Album {} not found or not owned by {}", albumId, ownerId);
             return Optional.empty();
         }
 
@@ -88,14 +95,19 @@ public class ImageService {
     }
 
     @Transactional
-    public void deleteByAlbumIdAndImageId(UUID albumId, UUID imageId) {
-        logger.info("Deleting image {} from album {}", imageId, albumId);
+    public boolean deleteByAlbumIdAndImageId(UUID albumId, UUID imageId, UUID ownerId) {
+        logger.info("Deleting image {} from album {} for owner {}", imageId, albumId, ownerId);
+
+        if (!isAlbumOwnedBy(albumId, ownerId)) {
+            logger.warn("Cannot delete. Album {} not found or not owned by {}", albumId, ownerId);
+            return false;
+        }
 
         Optional<Image> optionalImage = imageRepository.findById(imageId);
 
         if (optionalImage.isEmpty() || !albumId.equals(optionalImage.get().getAlbumId())) {
             logger.warn("Cannot delete. Image {} not found in album {}", imageId, albumId);
-            return;
+            return false;
         }
 
         Image image = optionalImage.get();
@@ -104,5 +116,12 @@ public class ImageService {
         imageRepository.deleteByAlbum_IdAndId(albumId, imageId);
 
         logger.info("Delete operation completed for image {}", imageId);
+        return true;
+    }
+
+    private boolean isAlbumOwnedBy(UUID albumId, UUID ownerId) {
+        return albumRepository.findById(albumId)
+                .map(album -> ownerId.equals(album.getOwnerId()))
+                .orElse(false);
     }
 }
