@@ -26,11 +26,13 @@
 ### Task 1: Infrastructure — dependencies, Docker services, config
 
 **Files:**
+
 - Modify: `pom.xml`
 - Modify: `docker-compose.yml`
 - Modify: `src/main/resources/application.properties`
 
 **Interfaces:**
+
 - Produces: `tika-core`, `thumbnailator`, `bucket4j-redis`, and a managed `lettuce-core` version (via `spring-boot-starter-data-redis`) on the classpath for later tasks. New Redis and ClamAV services reachable at `localhost:6379` / `localhost:3310` for local dev and tests.
 
 - [ ] **Step 1: Add new dependencies to `pom.xml`**
@@ -71,26 +73,26 @@ Expected: exits 0, no "could not resolve dependency" errors. If `bucket4j-redis:
 Add alongside the existing `postgres` service (before the `volumes:` block):
 
 ```yaml
-  redis:
-    image: redis:7
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+redis:
+  image: redis:7
+  ports:
+    - "6379:6379"
+  healthcheck:
+    test: ["CMD", "redis-cli", "ping"]
+    interval: 5s
+    timeout: 5s
+    retries: 5
 
-  clamav:
-    image: clamav/clamav:1.3
-    ports:
-      - "3310:3310"
-    healthcheck:
-      test: ["CMD-SHELL", "echo PING | nc -w 3 localhost 3310 | grep -q PONG"]
-      interval: 30s
-      timeout: 10s
-      retries: 10
-      start_period: 120s
+clamav:
+  image: clamav/clamav:1.3
+  ports:
+    - "3310:3310"
+  healthcheck:
+    test: ["CMD-SHELL", "echo PING | nc -w 3 localhost 3310 | grep -q PONG"]
+    interval: 30s
+    timeout: 10s
+    retries: 10
+    start_period: 120s
 ```
 
 ClamAV downloads virus definitions on first boot, which can take 1-2 minutes — the long `start_period` avoids false-unhealthy status during that window.
@@ -137,10 +139,12 @@ git commit -m "Add upload security infra: Tika, Thumbnailator, Bucket4j-Redis, C
 ### Task 2: Content-type validation (Apache Tika)
 
 **Files:**
+
 - Create: `src/main/java/com/example/photoBooth/service/upload/ContentTypeValidator.java`
 - Test: `src/test/java/com/example/photoBooth/service/upload/ContentTypeValidatorTest.java`
 
 **Interfaces:**
+
 - Produces: `ContentTypeValidator.isAllowedImage(byte[] bytes): boolean` — used by `ImageService` in Task 8.
 
 - [ ] **Step 1: Write the failing test**
@@ -234,10 +238,12 @@ git commit -m "Add Tika-based content-type validation for image uploads"
 ### Task 3: Image re-encoding (Thumbnailator)
 
 **Files:**
+
 - Create: `src/main/java/com/example/photoBooth/service/upload/ImageReencoder.java`
 - Test: `src/test/java/com/example/photoBooth/service/upload/ImageReencoderTest.java`
 
 **Interfaces:**
+
 - Consumes: nothing from earlier tasks.
 - Produces: `ImageReencoder.reencode(byte[] originalBytes, int maxDimensionPx): byte[] throws IOException` — used by `ImageService` in Task 8. Output is always JPEG.
 
@@ -378,6 +384,7 @@ git commit -m "Add Thumbnailator-based image re-encoding to strip metadata and c
 ### Task 4: ClamAV malware scanning client
 
 **Files:**
+
 - Create: `src/main/java/com/example/photoBooth/config/ClamAvProperties.java`
 - Create: `src/main/java/com/example/photoBooth/config/UploadConfig.java`
 - Create: `src/main/java/com/example/photoBooth/service/upload/ClamAvUnavailableException.java`
@@ -386,6 +393,7 @@ git commit -m "Add Thumbnailator-based image re-encoding to strip metadata and c
 - Test: `src/test/java/com/example/photoBooth/service/upload/ClamAvClientTest.java`
 
 **Interfaces:**
+
 - Consumes: nothing from earlier tasks.
 - Produces: `ClamAvClient.isInfected(byte[] fileBytes): boolean`, throwing `ClamAvUnavailableException` (a `RuntimeException`) if clamd can't be reached — used by `ImageService` in Task 8.
 
@@ -502,7 +510,7 @@ class ClamAvClientTest {
     @Test
     void shouldReturnFalseWhenClamdReportsClean() throws IOException {
         serverSocket = new ServerSocket(0);
-        respondWith("stream: OK ");
+        respondWith("stream: OK");
 
         ClamAvClient client = new ClamAvClient(properties(serverSocket.getLocalPort()), SocketFactory.getDefault());
 
@@ -512,7 +520,7 @@ class ClamAvClientTest {
     @Test
     void shouldReturnTrueWhenClamdReportsVirusFound() throws IOException {
         serverSocket = new ServerSocket(0);
-        respondWith("stream: Eicar-Test-Signature FOUND ");
+        respondWith("stream: Eicar-Test-Signature FOUND");
 
         ClamAvClient client = new ClamAvClient(properties(serverSocket.getLocalPort()), SocketFactory.getDefault());
 
@@ -682,6 +690,7 @@ git commit -m "Add ClamAV INSTREAM client for malware scanning uploads"
 ### Task 5: Redis-backed rate limiting (Bucket4j)
 
 **Files:**
+
 - Create: `src/main/java/com/example/photoBooth/config/UploadProperties.java`
 - Create: `src/main/java/com/example/photoBooth/config/RedisRateLimitConfig.java`
 - Create: `src/main/java/com/example/photoBooth/service/upload/RateLimiterService.java`
@@ -689,6 +698,7 @@ git commit -m "Add ClamAV INSTREAM client for malware scanning uploads"
 - Test: `src/test/java/com/example/photoBooth/service/upload/RateLimiterServiceTest.java`
 
 **Interfaces:**
+
 - Consumes: `UploadProperties.getRateLimit().getMaxPerHour()`.
 - Produces: `RateLimiterService.tryConsumeUploadToken(UUID userId): boolean` — used by `ImageService` in Task 8.
 
@@ -939,11 +949,13 @@ git commit -m "Add Redis-backed upload rate limiting via Bucket4j"
 ### Task 6: Presigned URL generation
 
 **Files:**
+
 - Modify: `src/main/java/com/example/photoBooth/config/R2ClientConfig.java`
 - Create: `src/main/java/com/example/photoBooth/service/upload/PresignedUrlService.java`
 - Test: `src/test/java/com/example/photoBooth/service/upload/PresignedUrlServiceTest.java`
 
 **Interfaces:**
+
 - Consumes: `R2Properties.getBucketName()`, `UploadProperties.getPresignedUrl().getExpiryMinutes()`.
 - Produces: `PresignedUrlService.generateGetUrl(String objectKey): String` — used by `ImageService` in Task 8.
 
@@ -1130,6 +1142,7 @@ git commit -m "Add presigned GET URL generation for private R2 objects"
 ### Task 7: Private object storage — migration, entity, `ImageStorageService`
 
 **Files:**
+
 - Create: `src/main/resources/db/migration/V6__image_object_key.sql`
 - Modify: `src/main/java/com/example/photoBooth/entity/Image.java`
 - Modify: `src/main/java/com/example/photoBooth/service/ImageStorageService.java`
@@ -1137,6 +1150,7 @@ git commit -m "Add presigned GET URL generation for private R2 objects"
 - Modify: `src/main/resources/application.properties` (remove now-unused `r2.public-url`)
 
 **Interfaces:**
+
 - Produces: `Image.getObjectKey()/setObjectKey(String)`; `ImageStorageService.upload(UUID ownerId, UUID albumId, UUID storageId, byte[] bytes): String` (returns the object key); `ImageStorageService.delete(String objectKey): void`. Used by `ImageService` in Task 8.
 
 - [ ] **Step 1: Write the migration**
@@ -1367,6 +1381,7 @@ git commit -m "Store images by private object key instead of public URL"
 ### Task 8: Wire the validation pipeline into `ImageService`
 
 **Files:**
+
 - Create: `src/main/java/com/example/photoBooth/service/UploadError.java`
 - Create: `src/main/java/com/example/photoBooth/service/ImageUploadResult.java`
 - Create: `src/main/java/com/example/photoBooth/api/ImageResponse.java`
@@ -1374,6 +1389,7 @@ git commit -m "Store images by private object key instead of public URL"
 - Modify: `src/test/java/com/example/photoBooth/service/ImageServiceTest.java`
 
 **Interfaces:**
+
 - Consumes: `RateLimiterService.tryConsumeUploadToken`, `ContentTypeValidator.isAllowedImage`, `ImageReencoder.reencode`, `ClamAvClient.isInfected`, `ImageStorageService.upload`, `PresignedUrlService.generateGetUrl`.
 - Produces: `ImageService.create(...): ImageUploadResult`; `ImageService.toResponse(Image): ImageResponse` — used by `ImageController` in Task 9.
 
@@ -1869,11 +1885,13 @@ git commit -m "Wire upload validation pipeline into ImageService"
 ### Task 9: Update `ImageController` for the new result type and response DTO
 
 **Files:**
+
 - Create: `src/main/java/com/example/photoBooth/api/ErrorResponse.java`
 - Modify: `src/main/java/com/example/photoBooth/controller/ImageController.java`
 - Modify: `src/test/java/com/example/photoBooth/controller/ImageControllerTest.java`
 
 **Interfaces:**
+
 - Consumes: `ImageService.create(...): ImageUploadResult`, `ImageService.toResponse(Image): ImageResponse`, `ImageService.findByAlbumId(...): Optional<List<Image>>`, `ImageService.deleteByAlbumIdAndImageId(...): boolean` (all from Task 8).
 
 - [ ] **Step 1: Write `ErrorResponse`**
