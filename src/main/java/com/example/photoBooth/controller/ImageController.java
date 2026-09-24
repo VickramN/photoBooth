@@ -1,10 +1,12 @@
 package com.example.photoBooth.controller;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import com.example.photoBooth.entity.Image;
+import com.example.photoBooth.api.ErrorResponse;
+import com.example.photoBooth.api.ImageResponse;
 import com.example.photoBooth.security.UserPrincipal;
 import com.example.photoBooth.service.ImageService;
+import com.example.photoBooth.service.ImageUploadResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -28,32 +30,40 @@ public class ImageController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Image>> getImagesByAlbumId(@PathVariable UUID albumId,
-                                                            @AuthenticationPrincipal UserPrincipal principal) {
+    public ResponseEntity<List<ImageResponse>> getImagesByAlbumId(@PathVariable UUID albumId,
+            @AuthenticationPrincipal UserPrincipal principal) {
         logger.info("GET /albums/{}/images - Fetching images for album", albumId);
 
         return imageService.findByAlbumId(albumId, principal.getId())
+                .map(images -> images.stream().map(imageService::toResponse).toList())
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Image> createImage(
+    public ResponseEntity<Object> createImage(
             @PathVariable UUID albumId,
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal UserPrincipal principal) {
 
         logger.info("POST /albums/{}/images - Creating image for album", albumId);
 
-        return imageService.create(albumId, file, principal.getId())
-                .map(image -> {
-                    logger.info("Image created successfully with id {} for album {}", image.getId(), albumId);
-                    return ResponseEntity.status(HttpStatus.CREATED).body(image);
-                })
-                .orElseGet(() -> {
-                    logger.warn("Cannot create image. Album not found or not owned: {}", albumId);
-                    return ResponseEntity.notFound().build();
-                });
+        ImageUploadResult result = imageService.create(albumId, file, principal.getId());
+
+        if (result instanceof ImageUploadResult.Success success) {
+            return ResponseEntity.status(HttpStatus.CREATED).body(imageService.toResponse(success.image()));
+        }
+
+        ImageUploadResult.Failure failure = (ImageUploadResult.Failure) result;
+        return switch (failure.error()) {
+            case ALBUM_NOT_FOUND -> ResponseEntity.notFound().build();
+            case RATE_LIMITED -> ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(new ErrorResponse("RATE_LIMITED"));
+            case FILE_TOO_LARGE -> ResponseEntity.badRequest().body(new ErrorResponse("FILE_TOO_LARGE"));
+            case INVALID_IMAGE_TYPE -> ResponseEntity.badRequest().body(new ErrorResponse("INVALID_IMAGE_TYPE"));
+            case INFECTED_FILE -> ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(new ErrorResponse("INFECTED_FILE"));
+        };
     }
 
     @DeleteMapping("/{imageId}")
@@ -67,11 +77,8 @@ public class ImageController {
         boolean deleted = imageService.deleteByAlbumIdAndImageId(albumId, imageId, principal.getId());
 
         if (!deleted) {
-            logger.warn("Cannot delete image {} from album {}", imageId, albumId);
             return ResponseEntity.notFound().build();
         }
-
-        logger.info("Delete request completed for image {} in album {}", imageId, albumId);
         return ResponseEntity.noContent().build();
     }
 }

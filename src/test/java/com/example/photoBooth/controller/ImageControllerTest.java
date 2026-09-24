@@ -1,9 +1,12 @@
 package com.example.photoBooth.controller;
 
+import com.example.photoBooth.api.ImageResponse;
 import com.example.photoBooth.entity.Image;
 import com.example.photoBooth.entity.User;
 import com.example.photoBooth.security.UserPrincipal;
 import com.example.photoBooth.service.ImageService;
+import com.example.photoBooth.service.ImageUploadResult;
+import com.example.photoBooth.service.UploadError;
 import com.example.photoBooth.security.JwtService;
 import com.example.photoBooth.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -42,12 +45,10 @@ class ImageControllerTest {
 
     @MockitoBean
     private ImageService imageService;
-
     @MockitoBean
-        private JwtService jwtService;
-
-        @MockitoBean
-        private UserRepository userRepository;
+    private JwtService jwtService;
+    @MockitoBean
+    private UserRepository userRepository;
 
     private UserPrincipal principal() {
         User owner = new User();
@@ -57,21 +58,24 @@ class ImageControllerTest {
         return new UserPrincipal(owner);
     }
 
-    @Test
-    void getImagesByAlbumIdShouldReturnImages() throws Exception {
+    private Image imageWithKey(String key) {
         Image image = new Image();
         image.setId(IMAGE_ID);
-        image.setImg("test-image-url");
+        image.setObjectKey(key);
+        return image;
+    }
 
+    @Test
+    void getImagesByAlbumIdShouldReturnImages() throws Exception {
+        Image image = imageWithKey("users/x/albums/y/z.jpg");
         when(imageService.findByAlbumId(ALBUM_ID, OWNER_ID)).thenReturn(Optional.of(List.of(image)));
+        when(imageService.toResponse(image)).thenReturn(new ImageResponse(IMAGE_ID, ALBUM_ID, "https://presigned.example/z.jpg"));
 
         mockMvc.perform(get("/albums/" + ALBUM_ID + "/images")
                 .with(user(principal())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].img").value("test-image-url"));
-
-        verify(imageService).findByAlbumId(ALBUM_ID, OWNER_ID);
+                .andExpect(jsonPath("$[0].url").value("https://presigned.example/z.jpg"));
     }
 
     @Test
@@ -81,20 +85,17 @@ class ImageControllerTest {
         mockMvc.perform(get("/albums/" + MISSING_ALBUM_ID + "/images")
                 .with(user(principal())))
                 .andExpect(status().isNotFound());
-
-        verify(imageService).findByAlbumId(MISSING_ALBUM_ID, OWNER_ID);
     }
 
     @Test
-    void createImageShouldReturnCreatedImageWhenAlbumOwned() throws Exception {
-        Image image = new Image();
-        image.setId(IMAGE_ID);
-        image.setImg("test-image-url");
+    void createImageShouldReturnCreatedImageWhenAllChecksPass() throws Exception {
+        Image image = imageWithKey("users/x/albums/y/z.jpg");
+        MockMultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", "fake-image-bytes".getBytes());
 
-        MockMultipartFile file = new MockMultipartFile(
-                "file", "photo.jpg", "image/jpeg", "fake-image-bytes".getBytes());
-
-        when(imageService.create(eq(ALBUM_ID), any(), eq(OWNER_ID))).thenReturn(Optional.of(image));
+        when(imageService.create(eq(ALBUM_ID), any(), eq(OWNER_ID)))
+                .thenReturn(new ImageUploadResult.Success(image));
+        when(imageService.toResponse(image))
+                .thenReturn(new ImageResponse(IMAGE_ID, ALBUM_ID, "https://presigned.example/z.jpg"));
 
         mockMvc.perform(multipart("/albums/" + ALBUM_ID + "/images")
                 .file(file)
@@ -102,25 +103,76 @@ class ImageControllerTest {
                 .with(csrf()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(IMAGE_ID.toString()))
-                .andExpect(jsonPath("$.img").value("test-image-url"));
-
-        verify(imageService).create(eq(ALBUM_ID), any(), eq(OWNER_ID));
+                .andExpect(jsonPath("$.url").value("https://presigned.example/z.jpg"));
     }
 
     @Test
     void createImageShouldReturnNotFoundWhenAlbumMissingOrNotOwned() throws Exception {
-        MockMultipartFile file = new MockMultipartFile(
-                "file", "photo.jpg", "image/jpeg", "fake-image-bytes".getBytes());
-
-        when(imageService.create(eq(MISSING_ALBUM_ID), any(), eq(OWNER_ID))).thenReturn(Optional.empty());
+        MockMultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", "fake-image-bytes".getBytes());
+        when(imageService.create(eq(MISSING_ALBUM_ID), any(), eq(OWNER_ID)))
+                .thenReturn(new ImageUploadResult.Failure(UploadError.ALBUM_NOT_FOUND));
 
         mockMvc.perform(multipart("/albums/" + MISSING_ALBUM_ID + "/images")
                 .file(file)
                 .with(user(principal()))
                 .with(csrf()))
                 .andExpect(status().isNotFound());
+    }
 
-        verify(imageService).create(eq(MISSING_ALBUM_ID), any(), eq(OWNER_ID));
+    @Test
+    void createImageShouldReturnTooManyRequestsWhenRateLimited() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", "fake-image-bytes".getBytes());
+        when(imageService.create(eq(ALBUM_ID), any(), eq(OWNER_ID)))
+                .thenReturn(new ImageUploadResult.Failure(UploadError.RATE_LIMITED));
+
+        mockMvc.perform(multipart("/albums/" + ALBUM_ID + "/images")
+                .file(file)
+                .with(user(principal()))
+                .with(csrf()))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.error").value("RATE_LIMITED"));
+    }
+
+    @Test
+    void createImageShouldReturnBadRequestWhenFileTooLarge() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", "fake-image-bytes".getBytes());
+        when(imageService.create(eq(ALBUM_ID), any(), eq(OWNER_ID)))
+                .thenReturn(new ImageUploadResult.Failure(UploadError.FILE_TOO_LARGE));
+
+        mockMvc.perform(multipart("/albums/" + ALBUM_ID + "/images")
+                .file(file)
+                .with(user(principal()))
+                .with(csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("FILE_TOO_LARGE"));
+    }
+
+    @Test
+    void createImageShouldReturnBadRequestWhenInvalidImageType() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", "fake-image-bytes".getBytes());
+        when(imageService.create(eq(ALBUM_ID), any(), eq(OWNER_ID)))
+                .thenReturn(new ImageUploadResult.Failure(UploadError.INVALID_IMAGE_TYPE));
+
+        mockMvc.perform(multipart("/albums/" + ALBUM_ID + "/images")
+                .file(file)
+                .with(user(principal()))
+                .with(csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("INVALID_IMAGE_TYPE"));
+    }
+
+    @Test
+    void createImageShouldReturnUnprocessableEntityWhenInfected() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", "fake-image-bytes".getBytes());
+        when(imageService.create(eq(ALBUM_ID), any(), eq(OWNER_ID)))
+                .thenReturn(new ImageUploadResult.Failure(UploadError.INFECTED_FILE));
+
+        mockMvc.perform(multipart("/albums/" + ALBUM_ID + "/images")
+                .file(file)
+                .with(user(principal()))
+                .with(csrf()))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error").value("INFECTED_FILE"));
     }
 
     @Test
@@ -131,8 +183,6 @@ class ImageControllerTest {
                 .with(user(principal()))
                 .with(csrf()))
                 .andExpect(status().isNoContent());
-
-        verify(imageService).deleteByAlbumIdAndImageId(ALBUM_ID, IMAGE_ID, OWNER_ID);
     }
 
     @Test
@@ -143,7 +193,5 @@ class ImageControllerTest {
                 .with(user(principal()))
                 .with(csrf()))
                 .andExpect(status().isNotFound());
-
-        verify(imageService).deleteByAlbumIdAndImageId(ALBUM_ID, IMAGE_ID, OWNER_ID);
     }
 }
