@@ -3,6 +3,7 @@ package com.example.photoBooth.entity;
 import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 @Entity
@@ -36,6 +37,7 @@ public class Image {
         this.id = id;
     }
 
+    @JsonIgnore
     public String getObjectKey() {
         return objectKey;
     }

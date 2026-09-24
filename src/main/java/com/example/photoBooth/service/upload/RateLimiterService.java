@@ -6,6 +6,7 @@ import io.github.bucket4j.Bucket;
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.Refill;
 import io.github.bucket4j.distributed.proxy.ProxyManager;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -19,7 +20,7 @@ public class RateLimiterService {
     private final ProxyManager<byte[]> proxyManager;
     private final UploadProperties uploadProperties;
 
-    public RateLimiterService(ProxyManager<byte[]> proxyManager, UploadProperties uploadProperties) {
+    public RateLimiterService(@Lazy ProxyManager<byte[]> proxyManager, UploadProperties uploadProperties) {
         this.proxyManager = proxyManager;
         this.uploadProperties = uploadProperties;
     }

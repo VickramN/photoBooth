@@ -50,7 +50,13 @@ public class ClamAvClient {
         out.flush();
 
         String response = readResponse(in);
-        return response.contains("FOUND");
+        if (response.contains("FOUND")) {
+            return true;
+        }
+        if (response.endsWith("OK")) {
+            return false;
+        }
+        throw new ClamAvUnavailableException("Unexpected response from ClamAV: " + response);
     }
 
     private byte[] intToBytes(int value) {

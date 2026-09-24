@@ -59,20 +59,17 @@ class ClamAvClientTest {
                 () -> client.isInfected("bytes".getBytes(StandardCharsets.UTF_8)));
     }
 
-
     @Test
-    void scratchVerifyAgainstRealClamAv() {
-        ClamAvProperties realProperties = new ClamAvProperties();
-        realProperties.setHost("localhost");
-        realProperties.setPort(3310);
+    void shouldThrowWhenClamdReturnsUnexpectedResponse() throws IOException {
+        serverSocket = new ServerSocket(0);
+        respondWith("stream: INSTREAM size limit exceeded. ERROR");
 
-        ClamAvClient client = new ClamAvClient(realProperties, SocketFactory.getDefault());
+        ClamAvClient client = new ClamAvClient(properties(serverSocket.getLocalPort()), SocketFactory.getDefault());
 
-        String eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
-        boolean infected = client.isInfected(eicar.getBytes(StandardCharsets.US_ASCII));
-
-        System.out.println("EICAR detected as infected: " + infected);
+        assertThrows(ClamAvUnavailableException.class,
+                () -> client.isInfected("bytes".getBytes(StandardCharsets.UTF_8)));
     }
+
     private void respondWith(String response) {
         Thread serverThread = new Thread(() -> {
             try (Socket socket = serverSocket.accept()) {

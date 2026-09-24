@@ -8,7 +8,7 @@ import java.util.Set;
 @Component
 public class ContentTypeValidator {
 
-    private static final Set<String> ALLOWED_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
+    private static final Set<String> ALLOWED_TYPES = Set.of("image/jpeg", "image/png");
 
     private final Tika tika = new Tika();
 

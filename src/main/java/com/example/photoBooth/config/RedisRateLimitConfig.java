@@ -9,6 +9,7 @@ import io.lettuce.core.codec.ByteArrayCodec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 
 @Configuration
 public class RedisRateLimitConfig {
@@ -21,11 +22,13 @@ public class RedisRateLimitConfig {
     }
 
     @Bean
+    @Lazy
     public StatefulRedisConnection<byte[], byte[]> redisConnection(RedisClient redisClient) {
         return redisClient.connect(ByteArrayCodec.INSTANCE);
     }
 
     @Bean
+    @Lazy
     public ProxyManager<byte[]> bucketProxyManager(StatefulRedisConnection<byte[], byte[]> connection) {
         return LettuceBasedProxyManager.builderFor(connection).build();
     }
