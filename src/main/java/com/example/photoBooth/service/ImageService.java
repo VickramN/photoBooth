@@ -1,14 +1,19 @@
 package com.example.photoBooth.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.example.photoBooth.api.ImageResponse;
+import com.example.photoBooth.config.UploadProperties;
 import com.example.photoBooth.entity.Album;
 import com.example.photoBooth.entity.Image;
 import com.example.photoBooth.repository.AlbumRepository;
 import com.example.photoBooth.repository.ImageRepository;
-
+import com.example.photoBooth.service.upload.ClamAvClient;
+import com.example.photoBooth.service.upload.ContentTypeValidator;
+import com.example.photoBooth.service.upload.ImageReencoder;
+import com.example.photoBooth.service.upload.PresignedUrlService;
+import com.example.photoBooth.service.upload.RateLimiterService;
 import jakarta.transaction.Transactional;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -25,97 +30,118 @@ public class ImageService {
     private final ImageRepository imageRepository;
     private final AlbumRepository albumRepository;
     private final ImageStorageService imageStorageService;
+    private final RateLimiterService rateLimiterService;
+    private final ContentTypeValidator contentTypeValidator;
+    private final ImageReencoder imageReencoder;
+    private final ClamAvClient clamAvClient;
+    private final PresignedUrlService presignedUrlService;
+    private final UploadProperties uploadProperties;
 
     public ImageService(ImageRepository imageRepository, AlbumRepository albumRepository,
-                         ImageStorageService imageStorageService) {
+            ImageStorageService imageStorageService, RateLimiterService rateLimiterService,
+            ContentTypeValidator contentTypeValidator, ImageReencoder imageReencoder,
+            ClamAvClient clamAvClient, PresignedUrlService presignedUrlService,
+            UploadProperties uploadProperties) {
         this.imageRepository = imageRepository;
         this.albumRepository = albumRepository;
         this.imageStorageService = imageStorageService;
+        this.rateLimiterService = rateLimiterService;
+        this.contentTypeValidator = contentTypeValidator;
+        this.imageReencoder = imageReencoder;
+        this.clamAvClient = clamAvClient;
+        this.presignedUrlService = presignedUrlService;
+        this.uploadProperties = uploadProperties;
     }
 
     public Optional<List<Image>> findByAlbumId(UUID albumId, UUID ownerId) {
-        logger.info("Fetching images for album {} for owner {}", albumId, ownerId);
-
         if (!isAlbumOwnedBy(albumId, ownerId)) {
-            logger.warn("Cannot fetch images. Album {} not found or not owned by {}", albumId, ownerId);
             return Optional.empty();
         }
-
         return Optional.of(imageRepository.findByAlbum_Id(albumId));
     }
 
     public Optional<Image> findById(UUID id, UUID ownerId) {
-        logger.info("Searching for image with id {} for owner {}", id, ownerId);
-
-        Optional<Image> image = imageRepository.findById(id)
+        return imageRepository.findById(id)
                 .filter(img -> img.getAlbum() != null && ownerId.equals(img.getAlbum().getOwnerId()));
-
-        if (image.isPresent()) {
-            logger.info("Image found with id {}", id);
-        } else {
-            logger.warn("Image not found (or not owned) with id {}", id);
-        }
-
-        return image;
     }
 
-    public Optional<Image> create(UUID albumId, MultipartFile file, UUID ownerId) {
-        logger.info("Creating image for album {} for owner {}", albumId, ownerId);
+    public ImageResponse toResponse(Image image) {
+        String url = presignedUrlService.generateGetUrl(image.getObjectKey());
+        return new ImageResponse(image.getId(), image.getAlbumId(), url);
+    }
 
+    public ImageUploadResult create(UUID albumId, MultipartFile file, UUID ownerId) {
         Optional<Album> optionalAlbum = albumRepository.findById(albumId)
                 .filter(album -> ownerId.equals(album.getOwnerId()));
-
         if (optionalAlbum.isEmpty()) {
             logger.warn("Cannot create image. Album {} not found or not owned by {}", albumId, ownerId);
-            return Optional.empty();
+            return new ImageUploadResult.Failure(UploadError.ALBUM_NOT_FOUND);
         }
 
-        Album album = optionalAlbum.get();
+        if (!rateLimiterService.tryConsumeUploadToken(ownerId)) {
+            logger.warn("Upload rate limit exceeded for owner {}", ownerId);
+            return new ImageUploadResult.Failure(UploadError.RATE_LIMITED);
+        }
 
-        String imageUrl;
+        byte[] originalBytes;
         try {
-            imageUrl = imageStorageService.upload(
-                    albumId,
-                    file.getOriginalFilename(),
-                    file.getContentType(),
-                    file.getBytes());
+            originalBytes = file.getBytes();
         } catch (IOException e) {
             throw new RuntimeException("Failed to read uploaded file", e);
         }
 
+        if (originalBytes.length > uploadProperties.getMaxFileSizeBytes()) {
+            logger.warn("Upload rejected, file too large ({} bytes) for owner {}", originalBytes.length, ownerId);
+            return new ImageUploadResult.Failure(UploadError.FILE_TOO_LARGE);
+        }
+
+        if (!contentTypeValidator.isAllowedImage(originalBytes)) {
+            logger.warn("Upload rejected, not a genuine allowed image type for owner {}", ownerId);
+            return new ImageUploadResult.Failure(UploadError.INVALID_IMAGE_TYPE);
+        }
+
+        byte[] reencodedBytes;
+        try {
+            reencodedBytes = imageReencoder.reencode(originalBytes, uploadProperties.getMaxDimensionPx());
+        } catch (IOException e) {
+            logger.warn("Upload rejected, unable to re-encode image for owner {}", ownerId);
+            return new ImageUploadResult.Failure(UploadError.INVALID_IMAGE_TYPE);
+        }
+
+        if (clamAvClient.isInfected(reencodedBytes)) {
+            logger.warn("Upload rejected, malware detected for owner {}", ownerId);
+            return new ImageUploadResult.Failure(UploadError.INFECTED_FILE);
+        }
+
+        Album album = optionalAlbum.get();
+        UUID storageId = UUID.randomUUID();
+        String objectKey = imageStorageService.upload(ownerId, albumId, storageId, reencodedBytes);
+
         Image image = new Image();
-        image.setImg(imageUrl);
+        image.setObjectKey(objectKey);
         image.setAlbum(album);
 
         Image savedImage = imageRepository.save(image);
-
         logger.info("Image created successfully with id {}", savedImage.getId());
 
-        return Optional.of(savedImage);
+        return new ImageUploadResult.Success(savedImage);
     }
 
     @Transactional
     public boolean deleteByAlbumIdAndImageId(UUID albumId, UUID imageId, UUID ownerId) {
-        logger.info("Deleting image {} from album {} for owner {}", imageId, albumId, ownerId);
-
         if (!isAlbumOwnedBy(albumId, ownerId)) {
-            logger.warn("Cannot delete. Album {} not found or not owned by {}", albumId, ownerId);
             return false;
         }
 
         Optional<Image> optionalImage = imageRepository.findById(imageId);
-
         if (optionalImage.isEmpty() || !albumId.equals(optionalImage.get().getAlbumId())) {
-            logger.warn("Cannot delete. Image {} not found in album {}", imageId, albumId);
             return false;
         }
 
         Image image = optionalImage.get();
-        imageStorageService.delete(image.getImg());
-
+        imageStorageService.delete(image.getObjectKey());
         imageRepository.deleteByAlbum_IdAndId(albumId, imageId);
 
-        logger.info("Delete operation completed for image {}", imageId);
         return true;
     }
 
