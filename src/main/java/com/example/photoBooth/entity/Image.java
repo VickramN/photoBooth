@@ -12,7 +12,7 @@ public class Image {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    private String img;
+    private String objectKey;
 
     @JsonBackReference
     @ManyToOne
@@ -22,9 +22,9 @@ public class Image {
     public Image() {
     }
 
-    public Image(UUID id, String img, Album album) {
+    public Image(UUID id, String objectKey, Album album) {
         this.id = id;
-        this.img = img;
+        this.objectKey = objectKey;
         this.album = album;
     }
 
@@ -36,12 +36,12 @@ public class Image {
         this.id = id;
     }
 
-    public String getImg() {
-        return img;
+    public String getObjectKey() {
+        return objectKey;
     }
 
-    public void setImg(String img) {
-        this.img = img;
+    public void setObjectKey(String objectKey) {
+        this.objectKey = objectKey;
     }
 
     public Album getAlbum() {

@@ -1,0 +1,1 @@
+ALTER TABLE image RENAME COLUMN img TO object_key;

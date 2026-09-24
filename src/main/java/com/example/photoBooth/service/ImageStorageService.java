@@ -24,53 +24,32 @@ public class ImageStorageService {
         this.r2Properties = r2Properties;
     }
 
-    public String upload(UUID albumId, String originalFileName, String contentType, byte[] bytes) {
-        String key = buildKey(albumId, originalFileName);
+    public String upload(UUID ownerId, UUID albumId, UUID storageId, byte[] bytes) {
+        String key = buildKey(ownerId, albumId, storageId);
 
         PutObjectRequest request = PutObjectRequest.builder()
                 .bucket(r2Properties.getBucketName())
                 .key(key)
-                .contentType(contentType)
+                .contentType("image/jpeg")
                 .build();
 
         s3Client.putObject(request, RequestBody.fromBytes(bytes));
 
-        String url = buildUrl(key);
         log.info("Uploaded image to R2 with key {}", key);
-        return url;
+        return key;
     }
 
-    public void delete(String imageUrl) {
-        String key = extractKeyFromUrl(imageUrl);
-
+    public void delete(String objectKey) {
         DeleteObjectRequest request = DeleteObjectRequest.builder()
                 .bucket(r2Properties.getBucketName())
-                .key(key)
+                .key(objectKey)
                 .build();
 
         s3Client.deleteObject(request);
-        log.info("Deleted image from R2 with key {}", key);
+        log.info("Deleted image from R2 with key {}", objectKey);
     }
 
-    private String buildKey(UUID albumId, String originalFilename) {
-        String extension = extractExtension(originalFilename);
-        return "albums/" + albumId + "/" + UUID.randomUUID() + extension;
-    }
-
-    private String extractExtension(String filename) {
-        if (filename == null) {
-            return "";
-        }
-        int dotIndex = filename.lastIndexOf('.');
-        return (dotIndex == -1) ? "" : filename.substring(dotIndex);
-    }
-
-    private String buildUrl(String key) {
-        return r2Properties.getPublicUrl() + "/" + key;
-    }
-
-    private String extractKeyFromUrl(String imageUrl) {
-        String prefix = r2Properties.getPublicUrl() + "/";
-        return imageUrl.substring(prefix.length());
+    private String buildKey(UUID ownerId, UUID albumId, UUID storageId) {
+        return "users/" + ownerId + "/albums/" + albumId + "/" + storageId + ".jpg";
     }
 }
