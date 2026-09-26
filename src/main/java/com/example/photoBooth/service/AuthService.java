@@ -15,6 +15,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import jakarta.transaction.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -75,6 +76,7 @@ public class AuthService {
         return jwtService.generateToken(user.getUsername(), user.getId());
     }
 
+    @Transactional
     public void requestPasswordReset(String username) {
         Optional<User> optionalUser = userRepository.findByUsername(username);
 

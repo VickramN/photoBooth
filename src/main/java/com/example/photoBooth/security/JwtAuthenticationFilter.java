@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
 @Component
@@ -49,7 +50,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (optionalUser.isPresent()) {
                 User user = optionalUser.get();
 
+                // JWT "iat" only has second-level precision, but passwordChangedAt is
+                // stored with sub-second precision. Truncate passwordChangedAt to
+                // seconds before comparing, otherwise a token issued in the very same
+                // second as a password change (e.g. register-then-immediately-login)
+                // gets spuriously rejected as "stale" even though it's the newest token.
                 boolean passwordChangedAfterTokenIssued = user.getPasswordChangedAt()
+                        .truncatedTo(ChronoUnit.SECONDS)
                         .isAfter(claims.getIssuedAt().toInstant());
 
                 if (!passwordChangedAfterTokenIssued) {

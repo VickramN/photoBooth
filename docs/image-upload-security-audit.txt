@@ -1,0 +1,86 @@
+IMAGE UPLOAD SECURITY HARDENING - BUG AUDIT
+Covers commits f3d5261..25fd112 (private object keys, validation pipeline,
+owner-scoped presigned URLs, typed upload errors, fail-closed AV scan,
+dropped webp, hidden object keys, lazy Redis connection, data-wipe migration).
+
+Companion curl test script: scripts/image-upload-security-tests.sh
+
+CONFIRMED BUGS / RISK FINDINGS (ranked by likelihood of biting)
+-----------------------------------------------------------------
+
+1. JWT_EXPIRATION vs JWT_EXPIRATION_MS name mismatch
+   Files: .env.example:11, src/main/resources/application.properties:29,
+          src/test/resources/application.properties:25
+   .env.example defines JWT_EXPIRATION, but application.properties resolves
+   jwt.expiration-ms=${JWT_EXPIRATION_MS}. No default value is set, so if a
+   real .env was created by copying .env.example and filling in
+   JWT_EXPIRATION, Spring fails to boot with:
+     IllegalArgumentException: Could not resolve placeholder 'JWT_EXPIRATION_MS'
+   FIX: renamed the property in .env.example to JWT_EXPIRATION_MS so it
+   matches what application.properties actually reads.
+
+2. Nested images inside /albums and /albums/{id} responses carried no
+   usable URL
+   Files: src/main/java/com/example/photoBooth/controller/AlbumController.java:31-74,
+          src/main/java/com/example/photoBooth/entity/Image.java,
+          src/main/java/com/example/photoBooth/entity/Album.java
+   These endpoints returned the raw Album entity. Album.images serialized
+   each nested Image directly through Jackson. Image.getObjectKey() is
+   correctly @JsonIgnore'd (no key leak), but nothing supplied a presigned
+   URL, and Image.album was @JsonBackReference'd away. Every nested image
+   serialized as just {"id": "..."}.
+   FIX: AlbumController now maps albums to an AlbumResponse DTO (with a
+   nested ImageResponse list built via ImageService.toResponse, the same
+   helper used by the images endpoint) instead of returning the entity
+   directly, so /albums, /albums/{id}, and /albums/admin/all all return
+   real presigned image URLs consistently with /albums/{albumId}/images.
+
+3. FILE_TOO_LARGE (400) branch was unreachable
+   Files: src/main/resources/application.properties:33,44-45,
+          src/main/java/com/example/photoBooth/service/ImageService.java:93-96
+   spring.servlet.multipart.max-file-size/max-request-size were set to
+   exactly the same 20MB as the app's own upload.max-file-size-bytes limit.
+   Spring throws MaxUploadSizeExceededException while parsing the multipart
+   request, before ImageService.create's own size check ever runs, and
+   nothing in the codebase caught that exception, so oversized uploads
+   surfaced as a generic 500 instead of the typed 400 FILE_TOO_LARGE.
+   FIX: added a @RestControllerAdvice (GlobalExceptionHandler) that catches
+   MaxUploadSizeExceededException and returns 400 with
+   {"error":"FILE_TOO_LARGE"}, matching ImageController's existing contract.
+
+4. AV-scanner outage / unreadable upload bytes surfaced as generic
+   unhandled 500s
+   Files: src/main/java/com/example/photoBooth/service/upload/ClamAvClient.java,
+          src/main/java/com/example/photoBooth/service/ImageService.java:86-91
+   ClamAvUnavailableException (unchecked) and the RuntimeException wrapping
+   a failed file.getBytes() read were never caught anywhere, so a scanner
+   outage or unreadable upload produced an opaque 500. Correctly fail-closed
+   already (the upload was rejected either way) but not distinguishable
+   from an unrelated bug.
+   FIX: same GlobalExceptionHandler now also catches ClamAvUnavailableException
+   and returns 503 with {"error":"SCAN_UNAVAILABLE"}, so scanner downtime is
+   now a typed, distinguishable response instead of a raw 500.
+
+5. AuthController route inconsistency
+   File: src/main/java/com/example/photoBooth/controller/AuthController.java:61
+   @PostMapping("reset-password") was missing the leading "/" that every
+   other mapping in the file has (e.g. "/forgot-password"). Functionally
+   harmless (Spring's path combining still resolves it to
+   /auth/reset-password), but inconsistent style and worth fixing for
+   clarity/consistency.
+   FIX: changed to @PostMapping("/reset-password").
+
+NON-BUGS VERIFIED CLEAN (ruled out during investigation)
+-----------------------------------------------------------------
+- ClamAV fail-open path: none found; every failure path throws and
+  propagates, nothing catches and defaults to "clean."
+- Content-type spoofing: ContentTypeValidator sniffs actual magic bytes via
+  Apache Tika, not the client's Content-Type header or filename.
+- Cross-owner presigned URL / object access: object keys are random UUIDs,
+  and every path to PresignedUrlService.generateGetUrl is gated by an
+  owner-filtered album/image lookup first.
+- Redis lazy-connection race: the two @Lazy beans in RedisRateLimitConfig
+  rely on Spring's singleton-creation lock, so concurrent first callers
+  can't create duplicate connections.
+- Object-key leakage: @JsonIgnore on Image.getObjectKey() is entity-level,
+  enforced uniformly across every serialization path.

@@ -11,6 +11,7 @@ import com.example.photoBooth.service.upload.ContentTypeValidator;
 import com.example.photoBooth.service.upload.ImageReencoder;
 import com.example.photoBooth.service.upload.PresignedUrlService;
 import com.example.photoBooth.service.upload.RateLimiterService;
+import com.example.photoBooth.service.upload.UploadReadException;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,7 +88,7 @@ public class ImageService {
         try {
             originalBytes = file.getBytes();
         } catch (IOException e) {
-            throw new RuntimeException("Failed to read uploaded file", e);
+            throw new UploadReadException("Failed to read uploaded file", e);
         }
 
         if (originalBytes.length > uploadProperties.getMaxFileSizeBytes()) {

@@ -58,7 +58,7 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("reset-password")
+    @PostMapping("/reset-password")
     public ResponseEntity<Void> resetPassword(@RequestBody ResetPasswordRequest request){
         logger.info("POST /auth/reset-password - Attempting reset");
         try{

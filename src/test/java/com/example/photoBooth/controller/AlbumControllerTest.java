@@ -4,6 +4,7 @@ import com.example.photoBooth.entity.Album;
 import com.example.photoBooth.entity.User;
 import com.example.photoBooth.security.UserPrincipal;
 import com.example.photoBooth.service.AlbumService;
+import com.example.photoBooth.service.ImageService;
 import com.example.photoBooth.security.JwtService;
 import com.example.photoBooth.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,9 @@ class AlbumControllerTest {
 
     @MockitoBean
     private AlbumService albumService;
+
+    @MockitoBean
+    private ImageService imageService;
 
     @MockitoBean
     private JwtService jwtService;
