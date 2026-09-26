@@ -7,6 +7,7 @@ import com.example.photoBooth.entity.Image;
 import com.example.photoBooth.repository.AlbumRepository;
 import com.example.photoBooth.repository.ImageRepository;
 import com.example.photoBooth.service.upload.ClamAvClient;
+import com.example.photoBooth.service.upload.ClamAvUnavailableException;
 import com.example.photoBooth.service.upload.ContentTypeValidator;
 import com.example.photoBooth.service.upload.ImageReencoder;
 import com.example.photoBooth.service.upload.PresignedUrlService;
@@ -101,17 +102,30 @@ public class ImageService {
             return new ImageUploadResult.Failure(UploadError.INVALID_IMAGE_TYPE);
         }
 
+        // Scan the original bytes, before re-encoding. Re-encoding fully decodes
+        // and redraws the image, which would strip any non-pixel payload before
+        // ClamAV ever saw it, and would hand a still-unscanned file to the image
+        // decoder first -- scanning here protects the decoder too.
+        boolean infected;
+        try {
+            infected = clamAvClient.isInfected(originalBytes);
+        } catch (ClamAvUnavailableException e) {
+            // Not the user's fault -- give back the token this upload attempt
+            // consumed so a scanner outage doesn't burn their hourly quota.
+            rateLimiterService.refundUploadToken(ownerId);
+            throw e;
+        }
+        if (infected) {
+            logger.warn("Upload rejected, malware detected for owner {}", ownerId);
+            return new ImageUploadResult.Failure(UploadError.INFECTED_FILE);
+        }
+
         byte[] reencodedBytes;
         try {
             reencodedBytes = imageReencoder.reencode(originalBytes, uploadProperties.getMaxDimensionPx());
         } catch (IOException e) {
             logger.warn("Upload rejected, unable to re-encode image for owner {}", ownerId);
             return new ImageUploadResult.Failure(UploadError.INVALID_IMAGE_TYPE);
-        }
-
-        if (clamAvClient.isInfected(reencodedBytes)) {
-            logger.warn("Upload rejected, malware detected for owner {}", ownerId);
-            return new ImageUploadResult.Failure(UploadError.INFECTED_FILE);
         }
 
         Album album = optionalAlbum.get();

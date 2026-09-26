@@ -70,6 +70,38 @@ class ClamAvClientTest {
                 () -> client.isInfected("bytes".getBytes(StandardCharsets.UTF_8)));
     }
 
+    @Test
+    void shouldThrowPromptlyWhenClamdAcceptsButNeverResponds() throws IOException {
+        serverSocket = new ServerSocket(0);
+        acceptAndHang();
+
+        ClamAvProperties properties = properties(serverSocket.getLocalPort());
+        properties.setReadTimeoutMs(200);
+        ClamAvClient client = new ClamAvClient(properties, SocketFactory.getDefault());
+
+        long start = System.nanoTime();
+        assertThrows(ClamAvUnavailableException.class,
+                () -> client.isInfected("bytes".getBytes(StandardCharsets.UTF_8)));
+        long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+
+        assertTrue(elapsedMs < 2000,
+                "expected the read timeout to fire promptly instead of hanging, took " + elapsedMs + "ms");
+    }
+
+    private void acceptAndHang() {
+        Thread serverThread = new Thread(() -> {
+            try (Socket socket = serverSocket.accept()) {
+                drainInstream(socket.getInputStream());
+                // Deliberately never respond, to simulate a hung clamd.
+                Thread.sleep(5000);
+            } catch (IOException | InterruptedException ignored) {
+                // test server socket closed during teardown
+            }
+        });
+        serverThread.setDaemon(true);
+        serverThread.start();
+    }
+
     private void respondWith(String response) {
         Thread serverThread = new Thread(() -> {
             try (Socket socket = serverSocket.accept()) {

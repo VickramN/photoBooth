@@ -8,6 +8,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 
@@ -25,7 +26,10 @@ public class ClamAvClient {
     }
 
     public boolean isInfected(byte[] fileBytes) {
-        try (Socket socket = socketFactory.createSocket(properties.getHost(), properties.getPort())) {
+        try (Socket socket = socketFactory.createSocket()) {
+            socket.connect(new InetSocketAddress(properties.getHost(), properties.getPort()),
+                    properties.getConnectTimeoutMs());
+            socket.setSoTimeout(properties.getReadTimeoutMs());
             return scan(socket, fileBytes);
         } catch (IOException e) {
             throw new ClamAvUnavailableException(

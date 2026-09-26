@@ -26,9 +26,21 @@ public class RateLimiterService {
     }
 
     public boolean tryConsumeUploadToken(UUID userId) {
-        byte[] key = ("upload-rate-limit:" + userId).getBytes(StandardCharsets.UTF_8);
-        Bucket bucket = proxyManager.builder().build(key, configSupplier());
+        Bucket bucket = bucketFor(userId);
         return bucket.tryConsume(1);
+    }
+
+    // Gives back a token consumed by tryConsumeUploadToken, for failures that
+    // are the server's fault (e.g. the AV scanner being unreachable) rather
+    // than the user's -- so an infrastructure outage doesn't burn through
+    // someone's hourly quota. addTokens won't exceed the bucket's capacity.
+    public void refundUploadToken(UUID userId) {
+        bucketFor(userId).addTokens(1);
+    }
+
+    private Bucket bucketFor(UUID userId) {
+        byte[] key = ("upload-rate-limit:" + userId).getBytes(StandardCharsets.UTF_8);
+        return proxyManager.builder().build(key, configSupplier());
     }
 
     private Supplier<BucketConfiguration> configSupplier() {

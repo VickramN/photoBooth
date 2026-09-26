@@ -7,6 +7,8 @@ public class ClamAvProperties {
 
     private String host;
     private int port;
+    private int connectTimeoutMs = 2000;
+    private int readTimeoutMs = 10000;
 
     public String getHost() {
         return host;
@@ -22,5 +24,21 @@ public class ClamAvProperties {
 
     public void setPort(int port) {
         this.port = port;
+    }
+
+    public int getConnectTimeoutMs() {
+        return connectTimeoutMs;
+    }
+
+    public void setConnectTimeoutMs(int connectTimeoutMs) {
+        this.connectTimeoutMs = connectTimeoutMs;
+    }
+
+    public int getReadTimeoutMs() {
+        return readTimeoutMs;
+    }
+
+    public void setReadTimeoutMs(int readTimeoutMs) {
+        this.readTimeoutMs = readTimeoutMs;
     }
 }

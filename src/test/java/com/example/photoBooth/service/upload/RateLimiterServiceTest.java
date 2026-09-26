@@ -16,6 +16,7 @@ import java.util.function.Supplier;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -55,5 +56,15 @@ class RateLimiterServiceTest {
         when(bucket.tryConsume(1)).thenReturn(false);
 
         assertFalse(rateLimiterService.tryConsumeUploadToken(UUID.randomUUID()));
+    }
+
+    @Test
+    void refundUploadTokenShouldAddTokenBackToBucket() {
+        when(proxyManager.builder()).thenReturn(bucketBuilder);
+        when(bucketBuilder.build(any(byte[].class), any(Supplier.class))).thenReturn(bucket);
+
+        rateLimiterService.refundUploadToken(UUID.randomUUID());
+
+        verify(bucket).addTokens(1);
     }
 }

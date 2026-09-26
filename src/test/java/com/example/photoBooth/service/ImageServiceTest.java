@@ -8,6 +8,7 @@ import com.example.photoBooth.config.UploadProperties;
 import com.example.photoBooth.repository.AlbumRepository;
 import com.example.photoBooth.repository.ImageRepository;
 import com.example.photoBooth.service.upload.ClamAvClient;
+import com.example.photoBooth.service.upload.ClamAvUnavailableException;
 import com.example.photoBooth.service.upload.ContentTypeValidator;
 import com.example.photoBooth.service.upload.ImageReencoder;
 import com.example.photoBooth.service.upload.PresignedUrlService;
@@ -77,10 +78,9 @@ class ImageServiceTest {
         return album;
     }
 
-    private void stubHappyPathUpToClamAv(byte[] originalBytes, byte[] reencodedBytes) throws Exception {
+    private void stubHappyPathUpToContentType(byte[] originalBytes) {
         when(rateLimiterService.tryConsumeUploadToken(OWNER_ID)).thenReturn(true);
         when(contentTypeValidator.isAllowedImage(originalBytes)).thenReturn(true);
-        when(imageReencoder.reencode(eq(originalBytes), anyInt())).thenReturn(reencodedBytes);
     }
 
     @Test
@@ -91,8 +91,9 @@ class ImageServiceTest {
         MockMultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", originalBytes);
 
         when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
-        stubHappyPathUpToClamAv(originalBytes, reencodedBytes);
-        when(clamAvClient.isInfected(reencodedBytes)).thenReturn(false);
+        stubHappyPathUpToContentType(originalBytes);
+        when(clamAvClient.isInfected(originalBytes)).thenReturn(false);
+        when(imageReencoder.reencode(eq(originalBytes), anyInt())).thenReturn(reencodedBytes);
         when(imageStorageService.upload(eq(OWNER_ID), eq(ALBUM_ID), any(UUID.class), eq(reencodedBytes)))
                 .thenReturn("users/" + OWNER_ID + "/albums/" + ALBUM_ID + "/storage.jpg");
         Image savedImage = new Image();
@@ -181,16 +182,34 @@ class ImageServiceTest {
     void createShouldFailWithInfectedFileWhenClamAvFlagsIt() throws Exception {
         Album album = ownedAlbum(ALBUM_ID, OWNER_ID);
         byte[] originalBytes = "original-bytes".getBytes();
-        byte[] reencodedBytes = "reencoded-bytes".getBytes();
         MockMultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", originalBytes);
         when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
-        stubHappyPathUpToClamAv(originalBytes, reencodedBytes);
-        when(clamAvClient.isInfected(reencodedBytes)).thenReturn(true);
+        stubHappyPathUpToContentType(originalBytes);
+        when(clamAvClient.isInfected(originalBytes)).thenReturn(true);
 
         ImageUploadResult result = imageService.create(ALBUM_ID, file, OWNER_ID);
 
         assertEquals(new ImageUploadResult.Failure(UploadError.INFECTED_FILE), result);
-        verifyNoInteractions(imageStorageService);
+        // The scan now runs on originalBytes before re-encoding, so a flagged
+        // upload should never reach the re-encoder or storage.
+        verifyNoInteractions(imageReencoder, imageStorageService);
+    }
+
+    @Test
+    void createShouldRefundRateLimitTokenAndRethrowWhenClamAvUnavailable() throws Exception {
+        Album album = ownedAlbum(ALBUM_ID, OWNER_ID);
+        byte[] originalBytes = "original-bytes".getBytes();
+        MockMultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", originalBytes);
+        when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
+        stubHappyPathUpToContentType(originalBytes);
+        when(clamAvClient.isInfected(originalBytes)).thenThrow(new ClamAvUnavailableException("clamd unreachable"));
+
+        assertThrows(ClamAvUnavailableException.class, () -> imageService.create(ALBUM_ID, file, OWNER_ID));
+
+        // A scanner outage isn't the user's fault -- the token this attempt
+        // consumed should be handed back, not just discarded.
+        verify(rateLimiterService).refundUploadToken(OWNER_ID);
+        verifyNoInteractions(imageReencoder, imageStorageService);
     }
 
     @Test
