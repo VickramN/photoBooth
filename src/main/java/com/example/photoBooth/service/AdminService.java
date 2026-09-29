@@ -6,9 +6,13 @@ import com.example.photoBooth.entity.User;
 import com.example.photoBooth.repository.AlbumRepository;
 import com.example.photoBooth.repository.RoleRepository;
 import com.example.photoBooth.repository.UserRepository;
+
+
+import com.example.photoBooth.repository.PasswordResetTokenRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -24,12 +28,15 @@ public class AdminService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final AlbumRepository albumRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    
 
     public AdminService(UserRepository userRepository, RoleRepository roleRepository,
-                         AlbumRepository albumRepository) {
+                         AlbumRepository albumRepository, PasswordResetTokenRepository passwordResetTokenRepository) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.albumRepository = albumRepository;
+        this.passwordResetTokenRepository = passwordResetTokenRepository;
     }
 
     public List<UserResponse> findAllUsers() {
@@ -81,6 +88,7 @@ public class AdminService {
         return Optional.of(new UserResponse(savedUser));
     }
 
+    @Transactional 
     public DeleteResult deleteUser(UUID id) {
         Optional<User> optionalUser = userRepository.findById(id);
 
@@ -95,6 +103,9 @@ public class AdminService {
             logger.warn("Admin: refusing to delete user {} - owns existing albums", id);
             return DeleteResult.HAS_ALBUMS;
         }
+
+        //The order of deletion matters, this has to be here. If moved test cases fail and will cause oprhaned tokens
+        passwordResetTokenRepository.deleteByUser_Id(id);
 
         userRepository.deleteById(id);
         logger.info("Admin: deleted user {}", id);
