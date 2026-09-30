@@ -1,0 +1,1 @@
+CREATE INDEX idx_image_album_id ON image (album_id);
