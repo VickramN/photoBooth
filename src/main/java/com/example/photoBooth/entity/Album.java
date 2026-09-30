@@ -3,10 +3,13 @@ package com.example.photoBooth.entity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
+
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-
 import java.util.UUID;
+
+import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
 public class Album {
@@ -32,7 +35,12 @@ public class Album {
 
     @JsonManagedReference
     @OneToMany(mappedBy = "album", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("createdAt ASC")
     private List<Image> images = new ArrayList<>();
+
+    @CreationTimestamp 
+    @Column(name="created_at", nullable = false, updatable = false)
+    private Instant created_at;
 
     public Album() {
     }
@@ -121,5 +129,9 @@ public class Album {
 
     public UUID getOwnerId(){
         return (owner != null) ? owner.getId() : null;
+    }
+
+    public Instant getCreatedAt(){
+        return created_at;
     }
 }

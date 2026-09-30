@@ -221,7 +221,7 @@ class ImageServiceTest {
         image.setAlbum(album);
 
         when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
-        when(imageRepository.findByAlbum_Id(ALBUM_ID)).thenReturn(List.of(image));
+        when(imageRepository.findByAlbum_IdOrderByCreatedAtAsc(ALBUM_ID)).thenReturn(List.of(image));
 
         Optional<List<Image>> result = imageService.findByAlbumId(ALBUM_ID, OWNER_ID);
 

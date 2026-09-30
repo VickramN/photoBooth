@@ -1,6 +1,9 @@
 package com.example.photoBooth.entity;
 
+import java.time.Instant;
 import java.util.UUID;
+
+import org.hibernate.annotations.CreationTimestamp;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -20,6 +23,11 @@ public class Image {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "album_id", nullable = false)
     private Album album;
+
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
 
     public Image() {
     }
@@ -57,5 +65,9 @@ public class Image {
 
     public UUID getAlbumId() {
         return (album != null) ? album.getId() : null;
+    }
+
+    public Instant getCreatedAt(){
+        return createdAt;
     }
 }

@@ -59,7 +59,7 @@ public class ImageService {
         if (!isAlbumOwnedBy(albumId, ownerId)) {
             return Optional.empty();
         }
-        return Optional.of(imageRepository.findByAlbum_Id(albumId));
+        return Optional.of(imageRepository.findByAlbum_IdOrderByCreatedAtAsc(albumId));
     }
 
     public Optional<Image> findById(UUID id, UUID ownerId) {
