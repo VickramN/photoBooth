@@ -90,21 +90,21 @@ public class AdminService {
 
     @Transactional 
     public DeleteResult deleteUser(UUID id) {
-        Optional<User> optionalUser = userRepository.findById(id);
 
-        if (optionalUser.isEmpty()) {
+        if (!userRepository.existsById(id)) {
             logger.warn("Admin: cannot delete, user not found: {}", id);
             return DeleteResult.NOT_FOUND;
         }
 
-        boolean hasAlbums = !albumRepository.findByOwner_Id(id).isEmpty();
+        boolean hasAlbums = albumRepository.existsByOwner_Id(id);
 
         if (hasAlbums) {
             logger.warn("Admin: refusing to delete user {} - owns existing albums", id);
             return DeleteResult.HAS_ALBUMS;
         }
 
-        //The order of deletion matters, this has to be here. If moved test cases fail and will cause oprhaned tokens
+        // Tokens must be deleted before the user: password_reset_token.user_id is a
+        // foreign key to app_user, so deleting the user first violates the constraint.
         passwordResetTokenRepository.deleteByUser_Id(id);
 
         userRepository.deleteById(id);

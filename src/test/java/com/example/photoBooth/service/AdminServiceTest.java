@@ -1,8 +1,5 @@
 package com.example.photoBooth.service;
 
-import com.example.photoBooth.entity.Album;
-import com.example.photoBooth.entity.Role;
-import com.example.photoBooth.entity.User;
 import com.example.photoBooth.repository.AlbumRepository;
 import com.example.photoBooth.repository.PasswordResetTokenRepository;
 import com.example.photoBooth.repository.RoleRepository;
@@ -14,8 +11,7 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
-import java.util.Optional;
+
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -41,8 +37,8 @@ public class AdminServiceTest {
 
     @Test 
     void deleteUser_deleteResetTokensBeforeUser(){
-        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(new User()));
-        when(albumRepository.findByOwner_Id(USER_ID)).thenReturn(List.of());
+        when(userRepository.existsById(USER_ID)).thenReturn(true);
+        when(albumRepository.existsByOwner_Id(USER_ID)).thenReturn(false);
 
         AdminService.DeleteResult result = adminService.deleteUser(USER_ID);
 
@@ -54,14 +50,14 @@ public class AdminServiceTest {
     
     @Test 
     void deleteUser_withAlbums_refusesAndLeavesTokensAlone(){
-        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(new User()));
-        when(albumRepository.findByOwner_Id(USER_ID)).thenReturn(List.of(new Album()));
+        when(userRepository.existsById(USER_ID)).thenReturn(true);
+        when(albumRepository.existsByOwner_Id(USER_ID)).thenReturn(true);
 
         AdminService.DeleteResult result = adminService.deleteUser(USER_ID);
 
         assertEquals(AdminService.DeleteResult.HAS_ALBUMS, result);
         verify(passwordResetTokenRepository, never()).deleteByUser_Id(any());
         verify(userRepository, never()).deleteById(any());
-        
+
     }
 }

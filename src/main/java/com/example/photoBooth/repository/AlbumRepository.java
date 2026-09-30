@@ -13,4 +13,6 @@ public interface AlbumRepository extends JpaRepository<Album, UUID> {
     List<Album> findByOwner_IdAndCityName(UUID ownerId, String cityName);
 
     List<Album> findByOwner_IdAndCityNameAndCountryName(UUID ownerId, String cityName, String countryName);
+
+    boolean existsByOwner_Id(UUID ownerId);
 }
