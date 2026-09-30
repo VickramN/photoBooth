@@ -25,7 +25,7 @@ public class Album {
     // not me work on this; Just deal with it idk
 
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id", nullable = false)
     @JsonIgnore
     private User owner;

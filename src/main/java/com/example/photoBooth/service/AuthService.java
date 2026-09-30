@@ -12,10 +12,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import jakarta.transaction.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -97,6 +97,7 @@ public class AuthService {
         logger.info("Password reset token for user '{}': {}", username, rawToken);
     }
 
+    @Transactional(noRollbackFor = IllegalArgumentException.class)
     public void resetPassword(String rawToken, String newPassword) {
         String tokenHash = hashToken(rawToken);
 
