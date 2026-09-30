@@ -220,7 +220,7 @@ class ImageServiceTest {
         image.setObjectKey("key");
         image.setAlbum(album);
 
-        when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
+        when(albumRepository.existsByIdAndOwner_Id(ALBUM_ID, OWNER_ID)).thenReturn(true);
         when(imageRepository.findByAlbum_IdOrderByCreatedAtAsc(ALBUM_ID)).thenReturn(List.of(image));
 
         Optional<List<Image>> result = imageService.findByAlbumId(ALBUM_ID, OWNER_ID);
@@ -231,7 +231,7 @@ class ImageServiceTest {
 
     @Test
     void findByAlbumIdShouldReturnEmptyOptionalWhenAlbumNotFound() {
-        when(albumRepository.findById(MISSING_ALBUM_ID)).thenReturn(Optional.empty());
+        when(albumRepository.existsByIdAndOwner_Id(MISSING_ALBUM_ID, OWNER_ID)).thenReturn(false);
 
         Optional<List<Image>> result = imageService.findByAlbumId(MISSING_ALBUM_ID, OWNER_ID);
 
@@ -263,7 +263,7 @@ class ImageServiceTest {
         image.setObjectKey("users/x/albums/y/z.jpg");
         image.setAlbum(album);
 
-        when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
+        when(albumRepository.existsByIdAndOwner_Id(ALBUM_ID, OWNER_ID)).thenReturn(true);
         when(imageRepository.findById(IMAGE_ID)).thenReturn(Optional.of(image));
 
         boolean result = imageService.deleteByAlbumIdAndImageId(ALBUM_ID, IMAGE_ID, OWNER_ID);
@@ -275,8 +275,7 @@ class ImageServiceTest {
 
     @Test
     void deleteByAlbumIdAndImageIdShouldReturnFalseWhenAlbumNotOwned() {
-        Album album = ownedAlbum(ALBUM_ID, OTHER_OWNER_ID);
-        when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
+        when(albumRepository.existsByIdAndOwner_Id(ALBUM_ID, OWNER_ID)).thenReturn(false);
 
         boolean result = imageService.deleteByAlbumIdAndImageId(ALBUM_ID, IMAGE_ID, OWNER_ID);
 

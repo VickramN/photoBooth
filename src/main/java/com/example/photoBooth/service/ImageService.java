@@ -161,8 +161,6 @@ public class ImageService {
     }
 
     private boolean isAlbumOwnedBy(UUID albumId, UUID ownerId) {
-        return albumRepository.findById(albumId)
-                .map(album -> ownerId.equals(album.getOwnerId()))
-                .orElse(false);
+        return albumRepository.existsByIdAndOwner_Id(albumId, ownerId);
     }
 }
