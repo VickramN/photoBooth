@@ -3,9 +3,15 @@ package com.example.photoBooth.service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.example.photoBooth.entity.Album;
+import com.example.photoBooth.entity.Image;
 import com.example.photoBooth.entity.User;
+import com.example.photoBooth.event.StorageObjectsDeletedEvent;
 import com.example.photoBooth.repository.AlbumRepository;
 import com.example.photoBooth.repository.UserRepository;
+
+
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,15 +23,21 @@ public class AlbumService {
 
     private static final Logger logger = LoggerFactory.getLogger(AlbumService.class);
 
+    private final ApplicationEventPublisher eventPublisher;
+
+
     private final AlbumRepository albumRepository;
     private final UserRepository userRepository;
     private final GeocodingService geocodingService;
 
+
+
     public AlbumService(AlbumRepository albumRepository, UserRepository userRepository,
-                         GeocodingService geocodingService) {
+                         GeocodingService geocodingService, ApplicationEventPublisher eventPublisher) {
         this.albumRepository = albumRepository;
         this.userRepository = userRepository;
         this.geocodingService = geocodingService;
+        this.eventPublisher = eventPublisher;
     }
 
     public List<Album> findAll(UUID ownerId) {
@@ -88,14 +100,22 @@ public class AlbumService {
         return savedAlbum;
     }
 
+    @Transactional 
     public boolean deleteById(UUID id, UUID ownerId) {
         logger.info("Deleting album with id {} for owner {}", id, ownerId);
+        
+        Optional<Album> optionalAlbum = findById(id, ownerId);
 
-        if (findById(id, ownerId).isEmpty()) {
+        if (optionalAlbum.isEmpty()) {
             return false;
         }
 
+        List<String> objectKeys = optionalAlbum.get().getImages().stream()
+            .map(Image::getObjectKey)
+            .toList();
+
         albumRepository.deleteById(id);
+        eventPublisher.publishEvent(new StorageObjectsDeletedEvent(objectKeys));
         logger.info("Album deleted with id {}", id);
         return true;
     }

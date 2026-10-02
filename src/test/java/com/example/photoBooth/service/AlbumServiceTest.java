@@ -1,7 +1,9 @@
 package com.example.photoBooth.service;
 
 import com.example.photoBooth.entity.Album;
+import com.example.photoBooth.entity.Image;
 import com.example.photoBooth.entity.User;
+import com.example.photoBooth.event.StorageObjectsDeletedEvent;
 import com.example.photoBooth.repository.AlbumRepository;
 import com.example.photoBooth.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -10,12 +12,14 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -26,6 +30,10 @@ class AlbumServiceTest {
     private static final UUID ALBUM_ID = UUID.randomUUID();
     private static final UUID ALBUM_ID_2 = UUID.randomUUID();
     private static final UUID MISSING_ALBUM_ID = UUID.randomUUID();
+
+
+    @Mock 
+    private ApplicationEventPublisher eventPublisher;
 
     @Mock
     private AlbumRepository albumRepository;
@@ -173,12 +181,18 @@ class AlbumServiceTest {
         album.setId(ALBUM_ID);
         album.setOwner(owner());
 
+        Image image = new Image();
+        image.setObjectKey("the-key");
+        image.setAlbum(album);
+        album.getImages().add(image);
+
         when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
 
         boolean result = albumService.deleteById(ALBUM_ID, OWNER_ID);
 
         assertTrue(result);
         verify(albumRepository).deleteById(ALBUM_ID);
+        verify(eventPublisher).publishEvent(new StorageObjectsDeletedEvent(List.of("the-key")));
     }
 
     @Test
@@ -193,6 +207,7 @@ class AlbumServiceTest {
 
         assertFalse(result);
         verify(albumRepository, never()).deleteById(any(UUID.class));
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -203,6 +218,7 @@ class AlbumServiceTest {
 
         assertFalse(result);
         verify(albumRepository, never()).deleteById(any(UUID.class));
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
