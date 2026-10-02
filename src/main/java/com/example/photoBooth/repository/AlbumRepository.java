@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Optional;
 
 public interface AlbumRepository extends JpaRepository<Album, UUID> {
 
@@ -17,4 +18,6 @@ public interface AlbumRepository extends JpaRepository<Album, UUID> {
     boolean existsByOwner_Id(UUID ownerId);
 
     boolean existsByIdAndOwner_Id(UUID id, UUID ownerId);
+
+    Optional<Album> findByIdAndOwner_Id(UUID id, UUID ownerId);
 }

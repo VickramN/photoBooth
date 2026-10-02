@@ -63,8 +63,7 @@ public class AlbumService {
     public Optional<Album> findById(UUID id, UUID ownerId) {
         logger.info("Searching for album with id {} for owner {}", id, ownerId);
 
-        Optional<Album> album = albumRepository.findById(id)
-                .filter(a -> ownerId.equals(a.getOwnerId()));
+        Optional<Album> album = albumRepository.findByIdAndOwner_Id(id, ownerId);
 
         if (album.isPresent()) {
             logger.info("Album found with id {}", id);

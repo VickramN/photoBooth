@@ -78,7 +78,7 @@ class AlbumServiceTest {
         album.setOwner(owner());
         album.setAlbumName("Test Album");
 
-        when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
+        when(albumRepository.findByIdAndOwner_Id(ALBUM_ID, OWNER_ID)).thenReturn(Optional.of(album));
 
         Optional<Album> result = albumService.findById(ALBUM_ID, OWNER_ID);
 
@@ -88,7 +88,7 @@ class AlbumServiceTest {
 
     @Test
     void findByIdShouldReturnEmptyWhenNotFound() {
-        when(albumRepository.findById(MISSING_ALBUM_ID)).thenReturn(Optional.empty());
+        when(albumRepository.findByIdAndOwner_Id(MISSING_ALBUM_ID, OWNER_ID)).thenReturn(Optional.empty());
 
         Optional<Album> result = albumService.findById(MISSING_ALBUM_ID, OWNER_ID);
 
@@ -102,7 +102,7 @@ class AlbumServiceTest {
         album.setOwner(owner());
         album.setAlbumName("Someone Else's Album");
 
-        when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
+        when(albumRepository.findByIdAndOwner_Id(ALBUM_ID, OTHER_OWNER_ID)).thenReturn(Optional.empty());
 
         Optional<Album> result = albumService.findById(ALBUM_ID, OTHER_OWNER_ID);
 
@@ -186,7 +186,7 @@ class AlbumServiceTest {
         image.setAlbum(album);
         album.getImages().add(image);
 
-        when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
+        when(albumRepository.findByIdAndOwner_Id(ALBUM_ID, OWNER_ID)).thenReturn(Optional.of(album));
 
         boolean result = albumService.deleteById(ALBUM_ID, OWNER_ID);
 
@@ -201,7 +201,7 @@ class AlbumServiceTest {
         album.setId(ALBUM_ID);
         album.setOwner(owner());
 
-        when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
+        when(albumRepository.findByIdAndOwner_Id(ALBUM_ID, OTHER_OWNER_ID)).thenReturn(Optional.empty());
 
         boolean result = albumService.deleteById(ALBUM_ID, OTHER_OWNER_ID);
 
@@ -212,7 +212,7 @@ class AlbumServiceTest {
 
     @Test
     void deleteByIdShouldReturnFalseWhenNotFound() {
-        when(albumRepository.findById(MISSING_ALBUM_ID)).thenReturn(Optional.empty());
+        when(albumRepository.findByIdAndOwner_Id(MISSING_ALBUM_ID, OWNER_ID)).thenReturn(Optional.empty());
 
         boolean result = albumService.deleteById(MISSING_ALBUM_ID, OWNER_ID);
 
