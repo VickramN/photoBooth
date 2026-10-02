@@ -4,6 +4,7 @@ import com.example.photoBooth.api.ImageResponse;
 import com.example.photoBooth.config.UploadProperties;
 import com.example.photoBooth.entity.Album;
 import com.example.photoBooth.entity.Image;
+import com.example.photoBooth.event.StorageObjectsDeletedEvent;
 import com.example.photoBooth.repository.AlbumRepository;
 import com.example.photoBooth.repository.ImageRepository;
 import com.example.photoBooth.service.upload.ClamAvClient;
@@ -13,11 +14,12 @@ import com.example.photoBooth.service.upload.ImageReencoder;
 import com.example.photoBooth.service.upload.PresignedUrlService;
 import com.example.photoBooth.service.upload.RateLimiterService;
 import com.example.photoBooth.service.upload.UploadReadException;
-import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.util.List;
@@ -28,6 +30,8 @@ import java.util.UUID;
 public class ImageService {
 
     private static final Logger logger = LoggerFactory.getLogger(ImageService.class);
+
+    private final ApplicationEventPublisher eventPublisher;
 
     private final ImageRepository imageRepository;
     private final AlbumRepository albumRepository;
@@ -43,7 +47,7 @@ public class ImageService {
             ImageStorageService imageStorageService, RateLimiterService rateLimiterService,
             ContentTypeValidator contentTypeValidator, ImageReencoder imageReencoder,
             ClamAvClient clamAvClient, PresignedUrlService presignedUrlService,
-            UploadProperties uploadProperties) {
+            UploadProperties uploadProperties, ApplicationEventPublisher eventPublisher) {
         this.imageRepository = imageRepository;
         this.albumRepository = albumRepository;
         this.imageStorageService = imageStorageService;
@@ -53,6 +57,7 @@ public class ImageService {
         this.clamAvClient = clamAvClient;
         this.presignedUrlService = presignedUrlService;
         this.uploadProperties = uploadProperties;
+        this.eventPublisher = eventPublisher;
     }
 
     public Optional<List<Image>> findByAlbumId(UUID albumId, UUID ownerId) {
@@ -154,8 +159,8 @@ public class ImageService {
         }
 
         Image image = optionalImage.get();
-        imageStorageService.delete(image.getObjectKey());
         imageRepository.deleteByAlbum_IdAndId(albumId, imageId);
+        eventPublisher.publishEvent(new StorageObjectsDeletedEvent(List.of(image.getObjectKey())));
 
         return true;
     }

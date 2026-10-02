@@ -4,6 +4,7 @@ import com.example.photoBooth.api.ImageResponse;
 import com.example.photoBooth.entity.Album;
 import com.example.photoBooth.entity.Image;
 import com.example.photoBooth.entity.User;
+import com.example.photoBooth.event.StorageObjectsDeletedEvent;
 import com.example.photoBooth.config.UploadProperties;
 import com.example.photoBooth.repository.AlbumRepository;
 import com.example.photoBooth.repository.ImageRepository;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.util.List;
@@ -30,6 +32,8 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ImageServiceTest {
+
+
 
     private static final UUID OWNER_ID = UUID.randomUUID();
     private static final UUID OTHER_OWNER_ID = UUID.randomUUID();
@@ -54,6 +58,8 @@ class ImageServiceTest {
     private ClamAvClient clamAvClient;
     @Mock
     private PresignedUrlService presignedUrlService;
+    @Mock 
+    private ApplicationEventPublisher eventPublisher;
 
     private ImageService imageService;
 
@@ -62,7 +68,7 @@ class ImageServiceTest {
         UploadProperties uploadProperties = new UploadProperties();
         imageService = new ImageService(imageRepository, albumRepository, imageStorageService,
                 rateLimiterService, contentTypeValidator, imageReencoder, clamAvClient,
-                presignedUrlService, uploadProperties);
+                presignedUrlService, uploadProperties, eventPublisher);
     }
 
     private User owner(UUID ownerId) {
@@ -155,7 +161,7 @@ class ImageServiceTest {
         tinyLimitProperties.setMaxFileSizeBytes(10L);
         imageService = new ImageService(imageRepository, albumRepository, imageStorageService,
                 rateLimiterService, contentTypeValidator, imageReencoder, clamAvClient,
-                presignedUrlService, tinyLimitProperties);
+                presignedUrlService, tinyLimitProperties, eventPublisher);
 
         ImageUploadResult result = imageService.create(ALBUM_ID, file, OWNER_ID);
 
@@ -269,7 +275,8 @@ class ImageServiceTest {
         boolean result = imageService.deleteByAlbumIdAndImageId(ALBUM_ID, IMAGE_ID, OWNER_ID);
 
         assertTrue(result);
-        verify(imageStorageService).delete("users/x/albums/y/z.jpg");
+        verify(eventPublisher).publishEvent(new StorageObjectsDeletedEvent(List.of("users/x/albums/y/z.jpg")));
+        verifyNoInteractions(imageStorageService);
         verify(imageRepository).deleteByAlbum_IdAndId(ALBUM_ID, IMAGE_ID);
     }
 
@@ -281,5 +288,18 @@ class ImageServiceTest {
 
         assertFalse(result);
         verifyNoInteractions(imageStorageService);
+    }
+
+    @Test 
+    void deleteByAlbumIdAndImageIdShouldReturnFalseWhenImageMissing() {
+        when(albumRepository.existsByIdAndOwner_Id(ALBUM_ID, OTHER_OWNER_ID)).thenReturn(true);
+        when(imageRepository.findById(MISSING_IMAGE_ID)).thenReturn(Optional.empty());
+
+        boolean result = imageService.deleteByAlbumIdAndImageId(ALBUM_ID, MISSING_IMAGE_ID, OTHER_OWNER_ID);
+
+        assertFalse(result);
+        verify(imageRepository, never()).deleteByAlbum_IdAndId(any(), any());
+        verifyNoInteractions(eventPublisher, imageStorageService);
+
     }
 }
