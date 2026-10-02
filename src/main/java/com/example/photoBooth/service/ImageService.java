@@ -78,8 +78,7 @@ public class ImageService {
     }
 
     public ImageUploadResult create(UUID albumId, MultipartFile file, UUID ownerId) {
-        Optional<Album> optionalAlbum = albumRepository.findById(albumId)
-                .filter(album -> ownerId.equals(album.getOwnerId()));
+        Optional<Album> optionalAlbum = albumRepository.findByIdAndOwner_Id(albumId, ownerId);
         if (optionalAlbum.isEmpty()) {
             logger.warn("Cannot create image. Album {} not found or not owned by {}", albumId, ownerId);
             return new ImageUploadResult.Failure(UploadError.ALBUM_NOT_FOUND);

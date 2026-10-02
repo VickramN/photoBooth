@@ -96,7 +96,7 @@ class ImageServiceTest {
         byte[] reencodedBytes = "reencoded-bytes".getBytes();
         MockMultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", originalBytes);
 
-        when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
+        when(albumRepository.findByIdAndOwner_Id(ALBUM_ID, OWNER_ID)).thenReturn(Optional.of(album));
         stubHappyPathUpToContentType(originalBytes);
         when(clamAvClient.isInfected(originalBytes)).thenReturn(false);
         when(imageReencoder.reencode(eq(originalBytes), anyInt())).thenReturn(reencodedBytes);
@@ -117,7 +117,7 @@ class ImageServiceTest {
     @Test
     void createShouldFailWithAlbumNotFoundWhenAlbumMissing() throws Exception {
         MockMultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", "bytes".getBytes());
-        when(albumRepository.findById(MISSING_ALBUM_ID)).thenReturn(Optional.empty());
+        when(albumRepository.findByIdAndOwner_Id(MISSING_ALBUM_ID, OWNER_ID)).thenReturn(Optional.empty());
 
         ImageUploadResult result = imageService.create(MISSING_ALBUM_ID, file, OWNER_ID);
 
@@ -127,9 +127,8 @@ class ImageServiceTest {
 
     @Test
     void createShouldFailWithAlbumNotFoundWhenNotOwned() throws Exception {
-        Album album = ownedAlbum(ALBUM_ID, OTHER_OWNER_ID);
         MockMultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", "bytes".getBytes());
-        when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
+        when(albumRepository.findByIdAndOwner_Id(ALBUM_ID, OWNER_ID)).thenReturn(Optional.empty());
 
         ImageUploadResult result = imageService.create(ALBUM_ID, file, OWNER_ID);
 
@@ -140,7 +139,7 @@ class ImageServiceTest {
     void createShouldFailWithRateLimitedWhenLimiterDenies() throws Exception {
         Album album = ownedAlbum(ALBUM_ID, OWNER_ID);
         MockMultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", "bytes".getBytes());
-        when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
+        when(albumRepository.findByIdAndOwner_Id(ALBUM_ID, OWNER_ID)).thenReturn(Optional.of(album));
         when(rateLimiterService.tryConsumeUploadToken(OWNER_ID)).thenReturn(false);
 
         ImageUploadResult result = imageService.create(ALBUM_ID, file, OWNER_ID);
@@ -154,7 +153,7 @@ class ImageServiceTest {
         Album album = ownedAlbum(ALBUM_ID, OWNER_ID);
         byte[] oversized = new byte[11];
         MockMultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", oversized);
-        when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
+        when(albumRepository.findByIdAndOwner_Id(ALBUM_ID, OWNER_ID)).thenReturn(Optional.of(album));
         when(rateLimiterService.tryConsumeUploadToken(OWNER_ID)).thenReturn(true);
 
         UploadProperties tinyLimitProperties = new UploadProperties();
@@ -174,7 +173,7 @@ class ImageServiceTest {
         Album album = ownedAlbum(ALBUM_ID, OWNER_ID);
         byte[] originalBytes = "not-an-image".getBytes();
         MockMultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", originalBytes);
-        when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
+        when(albumRepository.findByIdAndOwner_Id(ALBUM_ID, OWNER_ID)).thenReturn(Optional.of(album));
         when(rateLimiterService.tryConsumeUploadToken(OWNER_ID)).thenReturn(true);
         when(contentTypeValidator.isAllowedImage(originalBytes)).thenReturn(false);
 
@@ -189,7 +188,7 @@ class ImageServiceTest {
         Album album = ownedAlbum(ALBUM_ID, OWNER_ID);
         byte[] originalBytes = "original-bytes".getBytes();
         MockMultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", originalBytes);
-        when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
+        when(albumRepository.findByIdAndOwner_Id(ALBUM_ID, OWNER_ID)).thenReturn(Optional.of(album));
         stubHappyPathUpToContentType(originalBytes);
         when(clamAvClient.isInfected(originalBytes)).thenReturn(true);
 
@@ -206,7 +205,7 @@ class ImageServiceTest {
         Album album = ownedAlbum(ALBUM_ID, OWNER_ID);
         byte[] originalBytes = "original-bytes".getBytes();
         MockMultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", originalBytes);
-        when(albumRepository.findById(ALBUM_ID)).thenReturn(Optional.of(album));
+        when(albumRepository.findByIdAndOwner_Id(ALBUM_ID, OWNER_ID)).thenReturn(Optional.of(album));
         stubHappyPathUpToContentType(originalBytes);
         when(clamAvClient.isInfected(originalBytes)).thenThrow(new ClamAvUnavailableException("clamd unreachable"));
 
