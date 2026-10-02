@@ -15,6 +15,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -62,8 +63,12 @@ public class AuthService {
                 .orElseThrow(() -> new IllegalStateException("ROLE_USER not found - check V4 migration seed data"));
 
         User user = new User(username, passwordEncoder.encode(rawPassword), Set.of(userRole));
-
-        userRepository.save(user);
+        try{
+            userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalArgumentException("Username already taken: " + username);
+        }
+        
     }
 
     public String login(String username, String rawPassword) {
