@@ -1,6 +1,7 @@
 package com.example.photoBooth.controller;
 
 import com.example.photoBooth.api.ErrorResponse;
+import com.example.photoBooth.service.SelfModificationException;
 import com.example.photoBooth.service.upload.ClamAvUnavailableException;
 import com.example.photoBooth.service.upload.UploadReadException;
 import org.slf4j.Logger;
@@ -32,5 +33,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleUploadReadFailure(UploadReadException e) {
         logger.error("Upload rejected, failed to read uploaded file: {}", e.getMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse("UPLOAD_READ_FAILED"));
+    }
+
+    @ExceptionHandler(SelfModificationException.class)
+    public ResponseEntity<ErrorResponse> handleSelfModification(SelfModificationException e){
+        logger.warn("Admin action refused: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse("CANNOT_MODIFY_SELF"));
     }
 }

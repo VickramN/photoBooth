@@ -51,7 +51,10 @@ public class AdminService {
         return userRepository.findById(id).map(UserResponse::new);
     }
 
-    public Optional<UserResponse> updateUserRoles(UUID id, Set<String> roleNames) {
+    public Optional<UserResponse> updateUserRoles(UUID id, Set<String> roleNames, UUID actingAdminId) {
+
+        ensureNotSelf(id, actingAdminId);
+
         Optional<User> optionalUser = userRepository.findById(id);
 
         if (optionalUser.isEmpty()) {
@@ -72,7 +75,10 @@ public class AdminService {
         return Optional.of(new UserResponse(savedUser));
     }
 
-    public Optional<UserResponse> setUserEnabled(UUID id, boolean enabled) {
+    public Optional<UserResponse> setUserEnabled(UUID id, boolean enabled, UUID actingAdminId) {
+
+        ensureNotSelf(id, actingAdminId);
+
         Optional<User> optionalUser = userRepository.findById(id);
 
         if (optionalUser.isEmpty()) {
@@ -89,7 +95,9 @@ public class AdminService {
     }
 
     @Transactional 
-    public DeleteResult deleteUser(UUID id) {
+    public DeleteResult deleteUser(UUID id, UUID actingAdminId) {
+
+        ensureNotSelf(id, actingAdminId);
 
         if (!userRepository.existsById(id)) {
             logger.warn("Admin: cannot delete, user not found: {}", id);
@@ -111,6 +119,14 @@ public class AdminService {
         logger.info("Admin: deleted user {}", id);
         return DeleteResult.DELETED;
     }
+
+
+    private void ensureNotSelf(UUID targetUserId, UUID actingAdminId) {
+    if (targetUserId.equals(actingAdminId)) {
+        throw new SelfModificationException(
+                "Admin " + actingAdminId + " attempted to modify their own account");
+    }
+}
 
     public enum DeleteResult {
         DELETED, NOT_FOUND, HAS_ALBUMS
