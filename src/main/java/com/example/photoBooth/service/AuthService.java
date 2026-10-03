@@ -43,9 +43,9 @@ public class AuthService {
     private long resetTokenExpirationMinutes;
 
     public AuthService(UserRepository userRepository, RoleRepository roleRepository,
-                        PasswordResetTokenRepository passwordResetTokenRepository,
-                        PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager,
-                        JwtService jwtService) {
+            PasswordResetTokenRepository passwordResetTokenRepository,
+            PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager,
+            JwtService jwtService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
@@ -63,12 +63,12 @@ public class AuthService {
                 .orElseThrow(() -> new IllegalStateException("ROLE_USER not found - check V4 migration seed data"));
 
         User user = new User(username, passwordEncoder.encode(rawPassword), Set.of(userRole));
-        try{
+        try {
             userRepository.saveAndFlush(user);
         } catch (DataIntegrityViolationException e) {
             throw new IllegalArgumentException("Username already taken: " + username);
         }
-        
+
     }
 
     public String login(String username, String rawPassword) {
