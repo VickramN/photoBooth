@@ -3,6 +3,8 @@ package com.example.photoBooth;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.scheduling.annotation.EnableScheduling;
+
 import com.example.photoBooth.config.NominatimProperties;
 import com.example.photoBooth.config.R2Properties;
 import com.example.photoBooth.config.ClamAvProperties;
@@ -11,6 +13,7 @@ import com.example.photoBooth.security.JwtProperties;
 
 
 @SpringBootApplication
+@EnableScheduling 
 @EnableConfigurationProperties({ NominatimProperties.class, R2Properties.class, JwtProperties.class, ClamAvProperties.class, UploadProperties.class })
 public class PhotoBoothApplication {
 
