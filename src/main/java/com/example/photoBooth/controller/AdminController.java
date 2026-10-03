@@ -12,6 +12,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
+import jakarta.validation.Valid;
+
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -46,7 +48,7 @@ public class AdminController {
 
     @PutMapping("/{id}/roles")
     public ResponseEntity<UserResponse> updateUserRoles(@PathVariable UUID id,
-                                                         @RequestBody UpdateRolesRequest request, @AuthenticationPrincipal UserPrincipal principal) {
+            @Valid @RequestBody UpdateRolesRequest request, @AuthenticationPrincipal UserPrincipal principal) {
         logger.info("PUT /admin/users/{}/roles - Updating roles to {}", id, request.getRoles());
 
         try {
@@ -61,7 +63,7 @@ public class AdminController {
 
     @PutMapping("/{id}/enabled")
     public ResponseEntity<UserResponse> setUserEnabled(@PathVariable UUID id,
-                                                        @RequestBody Map<String, Boolean> request, @AuthenticationPrincipal UserPrincipal principal) {
+            @RequestBody Map<String, Boolean> request, @AuthenticationPrincipal UserPrincipal principal) {
         boolean enabled = request.getOrDefault("enabled", true);
         logger.info("PUT /admin/users/{}/enabled - Setting enabled={}", id, enabled);
 

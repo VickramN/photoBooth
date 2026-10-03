@@ -14,6 +14,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -52,7 +54,8 @@ public class AlbumController {
 
         if (city != null && country != null) {
             logger.info("GET /albums?city={}&country={} - Fetching albums by city and country", city, country);
-            return albumService.findByCityNameAndCountryName(city, country, ownerId).stream().map(this::toResponse).toList();
+            return albumService.findByCityNameAndCountryName(city, country, ownerId).stream().map(this::toResponse)
+                    .toList();
         }
 
         if (city != null) {
@@ -64,17 +67,16 @@ public class AlbumController {
         return albumService.findAll(ownerId).stream().map(this::toResponse).toList();
     }
 
-
     @GetMapping("/admin/all")
     @PreAuthorize("hasRole('ADMIN')")
-    public List<AlbumResponse> getAllAlbumsAdmin(){
+    public List<AlbumResponse> getAllAlbumsAdmin() {
         logger.info("GET /albums/admin/all - Fetching all albums (admin only)");
         return albumService.findAllAdmin().stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<AlbumResponse> getAlbumById(@PathVariable UUID id,
-                                               @AuthenticationPrincipal UserPrincipal principal) {
+            @AuthenticationPrincipal UserPrincipal principal) {
         logger.info("GET /albums/{} - Fetching album by id", id);
 
         return albumService.findById(id, principal.getId())
@@ -89,8 +91,8 @@ public class AlbumController {
     }
 
     @PostMapping
-    public ResponseEntity<AlbumResponse> createAlbum(@RequestBody CreateAlbumRequest request,
-                                              @AuthenticationPrincipal UserPrincipal principal) {
+    public ResponseEntity<AlbumResponse> createAlbum(@Valid @RequestBody CreateAlbumRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
         logger.info("POST /albums - Creating album with name {}", request.getAlbumName());
 
         Album album = new Album();
@@ -107,7 +109,7 @@ public class AlbumController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteAlbum(@PathVariable UUID id,
-                                             @AuthenticationPrincipal UserPrincipal principal) {
+            @AuthenticationPrincipal UserPrincipal principal) {
         logger.info("DELETE /albums/{} - Attempting to delete album", id);
 
         boolean deleted = albumService.deleteById(id, principal.getId());
