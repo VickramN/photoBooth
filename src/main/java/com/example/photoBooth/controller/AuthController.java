@@ -10,7 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -45,27 +45,27 @@ public class AuthController {
         try {
             String token = authService.login(request.getUsername(), request.getPassword());
             return ResponseEntity.ok(new AuthResponse(token));
-        } catch (BadCredentialsException e) {
-            logger.warn("Login failed for {}", request.getUsername());
+        } catch (AuthenticationException e) {
+            logger.warn("Login failed for {}: {}", request.getUsername(), e.getClass().getSimpleName());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<Void> forgotPassword(@RequestBody ForgotPasswordRequest request){
+    public ResponseEntity<Void> forgotPassword(@RequestBody ForgotPasswordRequest request) {
         logger.info("POST /auth/forgot-password - Request for {}", request.getUsername());
         authService.requestPasswordReset(request.getUsername());
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/reset-password")
-    public ResponseEntity<Void> resetPassword(@RequestBody ResetPasswordRequest request){
+    public ResponseEntity<Void> resetPassword(@RequestBody ResetPasswordRequest request) {
         logger.info("POST /auth/reset-password - Attempting reset");
-        try{
+        try {
             authService.resetPassword(request.getToken(), request.getNewPassword());
             return ResponseEntity.ok().build();
-        } catch(IllegalArgumentException e){
-            logger.warn("Password reset failed: {}", e .getMessage());
+        } catch (IllegalArgumentException e) {
+            logger.warn("Password reset failed: {}", e.getMessage());
             return ResponseEntity.badRequest().build();
         }
     }
