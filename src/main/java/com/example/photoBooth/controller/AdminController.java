@@ -1,5 +1,6 @@
 package com.example.photoBooth.controller;
 
+import com.example.photoBooth.api.SetEnabledRequest;
 import com.example.photoBooth.api.UpdateRolesRequest;
 import com.example.photoBooth.api.UserResponse;
 import com.example.photoBooth.service.AdminService;
@@ -63,8 +64,8 @@ public class AdminController {
 
     @PutMapping("/{id}/enabled")
     public ResponseEntity<UserResponse> setUserEnabled(@PathVariable UUID id,
-            @RequestBody Map<String, Boolean> request, @AuthenticationPrincipal UserPrincipal principal) {
-        boolean enabled = request.getOrDefault("enabled", true);
+            @Valid @RequestBody SetEnabledRequest request, @AuthenticationPrincipal UserPrincipal principal) {
+        boolean enabled = request.enabled();
         logger.info("PUT /admin/users/{}/enabled - Setting enabled={}", id, enabled);
 
         return adminService.setUserEnabled(id, enabled, principal.getId())
