@@ -18,15 +18,19 @@ public class Album {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(name = "album_name", nullable = false)
     private String albumName;
+
+    @Column(name = "city_name", nullable = false)
     private String cityName;
+
+    @Column(name = "country_name", nullable = false)
     private String countryName;
 
     private Double lat;
     private Double lang;
     // I chose to abbreviate longitude as lang, if any future engineer's that are
     // not me work on this; Just deal with it idk
-
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id", nullable = false)
@@ -38,8 +42,8 @@ public class Album {
     @OrderBy("createdAt ASC")
     private List<Image> images = new ArrayList<>();
 
-    @CreationTimestamp 
-    @Column(name="created_at", nullable = false, updatable = false)
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant created_at;
 
     public Album() {
@@ -116,22 +120,22 @@ public class Album {
 
     public void setLang(Double lang) {
         this.lang = lang;
-        
+
     }
 
-    public User getOwner(){
+    public User getOwner() {
         return owner;
     }
 
-    public void setOwner(User owner){
+    public void setOwner(User owner) {
         this.owner = owner;
     }
 
-    public UUID getOwnerId(){
+    public UUID getOwnerId() {
         return (owner != null) ? owner.getId() : null;
     }
 
-    public Instant getCreatedAt(){
+    public Instant getCreatedAt() {
         return created_at;
     }
 }
