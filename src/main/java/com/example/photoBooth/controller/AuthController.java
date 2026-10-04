@@ -3,9 +3,11 @@ package com.example.photoBooth.controller;
 import com.example.photoBooth.api.AuthResponse;
 import com.example.photoBooth.api.ForgotPasswordRequest;
 import com.example.photoBooth.api.ResetPasswordRequest;
+import com.example.photoBooth.controller.error.ApiException;
 import com.example.photoBooth.api.LoginRequest;
 import com.example.photoBooth.api.RegisterRequest;
 import com.example.photoBooth.service.AuthService;
+import com.example.photoBooth.api.ErrorCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -36,7 +38,7 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.CREATED).build();
         } catch (IllegalArgumentException e) {
             logger.warn("Registration failed for {}: {}", request.getUsername(), e.getMessage());
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            throw new ApiException(HttpStatus.CONFLICT, ErrorCode.USERNAME_TAKEN);
         }
     }
 
@@ -49,7 +51,7 @@ public class AuthController {
             return ResponseEntity.ok(new AuthResponse(token));
         } catch (AuthenticationException e) {
             logger.warn("Login failed for {}: {}", request.getUsername(), e.getClass().getSimpleName());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            throw new ApiException(HttpStatus.UNAUTHORIZED, ErrorCode.INVALID_CREDENTIALS);
         }
     }
 
@@ -68,7 +70,7 @@ public class AuthController {
             return ResponseEntity.ok().build();
         } catch (IllegalArgumentException e) {
             logger.warn("Password reset failed: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
+            throw new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_RESET_TOKEN);
         }
     }
 }

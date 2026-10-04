@@ -1,5 +1,6 @@
-package com.example.photoBooth.controller;
+package com.example.photoBooth.controller.error;
 
+import com.example.photoBooth.api.ErrorCode;
 import com.example.photoBooth.api.ErrorResponse;
 import com.example.photoBooth.api.ValidationErrorResponse;
 import com.example.photoBooth.service.SelfModificationException;
@@ -30,42 +31,48 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException e) {
         logger.warn("Upload rejected, exceeded container max upload size: {}", e.getMessage());
-        return ResponseEntity.badRequest().body(new ErrorResponse("FILE_TOO_LARGE"));
+        return ResponseEntity.badRequest().body(new ErrorResponse(ErrorCode.FILE_TOO_LARGE));
     }
 
+    // Scan Unavailable
     @ExceptionHandler(ClamAvUnavailableException.class)
     public ResponseEntity<ErrorResponse> handleClamAvUnavailable(ClamAvUnavailableException e) {
         logger.error("Upload rejected, AV scanner unavailable: {}", e.getMessage());
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(new ErrorResponse("SCAN_UNAVAILABLE"));
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(new ErrorResponse(ErrorCode.SCAN_UNAVAILABLE));
     }
 
+    // File upload error
     @ExceptionHandler(UploadReadException.class)
     public ResponseEntity<ErrorResponse> handleUploadReadFailure(UploadReadException e) {
         logger.error("Upload rejected, failed to read uploaded file: {}", e.getMessage());
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse("UPLOAD_READ_FAILED"));
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse(ErrorCode.UPLOAD_READ_FAILED));
     }
 
+    // Prevent Admin from demoting themselves
     @ExceptionHandler(SelfModificationException.class)
     public ResponseEntity<ErrorResponse> handleSelfModification(SelfModificationException e) {
         logger.warn("Admin action refused: {}", e.getMessage());
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse("CANNOT_MODIFY_SELF"));
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(ErrorCode.CANNOT_MODIFY_SELF));
     }
 
+    // Incorrect formatted request
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleUnreadableBody(HttpMessageNotReadableException e) {
         logger.warn("Malformed request body: {}", e.getMessage());
-        return ResponseEntity.badRequest().body(new ErrorResponse("MALFORMED_REQUEST"));
+        return ResponseEntity.badRequest().body(new ErrorResponse(ErrorCode.MALFORMED_REQUEST));
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
         logger.warn("Invalid value for parameter '{}': {}", e.getName(), e.getValue());
-        return ResponseEntity.badRequest().body(new ErrorResponse("INVALID_PARAMETER"));
+        return ResponseEntity.badRequest().body(new ErrorResponse(ErrorCode.INVALID_PARAMETER));
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotResource(NoResourceFoundException e) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse("NOT_FOUND"));
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(ErrorCode.NOT_FOUND));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -75,17 +82,23 @@ public class GlobalExceptionHandler {
             fields.putIfAbsent(fieldError.getField(), fieldError.getDefaultMessage());
         }
 
-        return ResponseEntity.badRequest().body(new ValidationErrorResponse("VALIDATION_FAILED", fields));
+        return ResponseEntity.badRequest().body(new ValidationErrorResponse(ErrorCode.VALIDATION_FAILED, fields));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException e) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse("FORBIDDEN"));
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse(ErrorCode.FORBIDDEN));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpected(Exception e) {
         logger.error("Unhandled Exception", e);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse("INTERNAL_ERROR"));
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse(ErrorCode.INTERNAL_ERROR));
+    }
+
+    @ExceptionHandler(ApiException.class)
+    public ResponseEntity<ErrorResponse> handleApiException(ApiException e) {
+        return ResponseEntity.status(e.getStatus()).body(new ErrorResponse(e.getCode()));
     }
 }

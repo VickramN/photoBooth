@@ -3,6 +3,8 @@ package com.example.photoBooth.controller;
 import com.example.photoBooth.api.SetEnabledRequest;
 import com.example.photoBooth.api.UpdateRolesRequest;
 import com.example.photoBooth.api.UserResponse;
+import com.example.photoBooth.api.ErrorCode;
+import com.example.photoBooth.controller.error.ApiException;
 import com.example.photoBooth.service.AdminService;
 import com.example.photoBooth.security.UserPrincipal;
 import org.slf4j.Logger;
@@ -16,7 +18,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import jakarta.validation.Valid;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -44,7 +45,7 @@ public class AdminController {
 
         return adminService.findUserById(id)
                 .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, ErrorCode.USER_NOT_FOUND));
     }
 
     @PutMapping("/{id}/roles")
@@ -55,10 +56,10 @@ public class AdminController {
         try {
             return adminService.updateUserRoles(id, request.getRoles(), principal.getId())
                     .map(ResponseEntity::ok)
-                    .orElseGet(() -> ResponseEntity.notFound().build());
+                    .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, ErrorCode.USER_NOT_FOUND));
         } catch (IllegalArgumentException e) {
             logger.warn("Invalid role update for user {}: {}", id, e.getMessage());
-            return ResponseEntity.badRequest().build();
+            throw new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.UNKNOWN_ROLE);
         }
     }
 
@@ -70,7 +71,7 @@ public class AdminController {
 
         return adminService.setUserEnabled(id, enabled, principal.getId())
                 .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, ErrorCode.USER_NOT_FOUND));
     }
 
     @DeleteMapping("/{id}")
@@ -81,8 +82,8 @@ public class AdminController {
 
         return switch (result) {
             case DELETED -> ResponseEntity.noContent().build();
-            case NOT_FOUND -> ResponseEntity.notFound().build();
-            case HAS_ALBUMS -> ResponseEntity.status(HttpStatus.CONFLICT).build();
+            case NOT_FOUND -> throw new ApiException(HttpStatus.NOT_FOUND, ErrorCode.USER_NOT_FOUND);
+            case HAS_ALBUMS -> throw new ApiException(HttpStatus.CONFLICT, ErrorCode.USER_HAS_ALBUMS);
         };
     }
 }

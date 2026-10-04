@@ -1,4 +1,4 @@
 package com.example.photoBooth.api;
 
-public record ErrorResponse(String error) {
+public record ErrorResponse(ErrorCode error) {
 }

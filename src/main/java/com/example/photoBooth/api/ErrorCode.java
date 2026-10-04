@@ -1,0 +1,32 @@
+package com.example.photoBooth.api;
+
+public enum ErrorCode {
+    // General
+    MALFORMED_REQUEST,
+    INVALID_PARAMETER,
+    VALIDATION_FAILED,
+    NOT_FOUND,
+    FORBIDDEN,
+    INTERNAL_ERROR,
+
+    // Auth
+    USERNAME_TAKEN,
+    INVALID_CREDENTIALS,
+    INVALID_RESET_TOKEN,
+
+    // Admin
+    USER_NOT_FOUND,
+    UNKNOWN_ROLE,
+    USER_HAS_ALBUMS,
+    CANNOT_MODIFY_SELF,
+
+    // Albums and images
+    ALBUM_NOT_FOUND,
+    IMAGE_NOT_FOUND,
+    RATE_LIMITED,
+    FILE_TOO_LARGE,
+    INVALID_IMAGE_TYPE,
+    INFECTED_FILE,
+    SCAN_UNAVAILABLE,
+    UPLOAD_READ_FAILED
+}

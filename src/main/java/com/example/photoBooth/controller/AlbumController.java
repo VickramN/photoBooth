@@ -4,10 +4,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.example.photoBooth.api.AlbumResponse;
 import com.example.photoBooth.api.CreateAlbumRequest;
+import com.example.photoBooth.api.ErrorCode;
 import com.example.photoBooth.entity.Album;
 import com.example.photoBooth.security.UserPrincipal;
 import com.example.photoBooth.service.AlbumService;
 import com.example.photoBooth.service.ImageService;
+import com.example.photoBooth.controller.error.ApiException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -84,9 +86,9 @@ public class AlbumController {
                     logger.info("Album found with id {}", id);
                     return ResponseEntity.ok(toResponse(album));
                 })
-                .orElseGet(() -> {
+                .orElseThrow(() -> {
                     logger.warn("Album not found with id {}", id);
-                    return ResponseEntity.notFound().build();
+                    return new ApiException(HttpStatus.NOT_FOUND, ErrorCode.ALBUM_NOT_FOUND);
                 });
     }
 
@@ -116,7 +118,7 @@ public class AlbumController {
 
         if (!deleted) {
             logger.warn("Cannot delete album. Album not found with id {}", id);
-            return ResponseEntity.notFound().build();
+            throw new ApiException(HttpStatus.NOT_FOUND, ErrorCode.ALBUM_NOT_FOUND);
         }
 
         logger.info("Album deleted successfully with id {}", id);
