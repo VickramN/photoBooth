@@ -9,7 +9,6 @@ import com.example.photoBooth.event.StorageObjectsDeletedEvent;
 import com.example.photoBooth.repository.AlbumRepository;
 import com.example.photoBooth.repository.UserRepository;
 
-
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -25,15 +24,12 @@ public class AlbumService {
 
     private final ApplicationEventPublisher eventPublisher;
 
-
     private final AlbumRepository albumRepository;
     private final UserRepository userRepository;
     private final GeocodingService geocodingService;
 
-
-
     public AlbumService(AlbumRepository albumRepository, UserRepository userRepository,
-                         GeocodingService geocodingService, ApplicationEventPublisher eventPublisher) {
+            GeocodingService geocodingService, ApplicationEventPublisher eventPublisher) {
         this.albumRepository = albumRepository;
         this.userRepository = userRepository;
         this.geocodingService = geocodingService;
@@ -52,12 +48,18 @@ public class AlbumService {
 
     public List<Album> findByCityName(String cityName, UUID ownerId) {
         logger.info("Fetching albums by city {} for owner {}", cityName, ownerId);
-        return albumRepository.findByOwner_IdAndCityName(ownerId, cityName);
+        return albumRepository.findByOwner_IdAndCityNameIgnoreCase(ownerId, cityName);
+    }
+
+    public List<Album> findByCountryName(String countryName, UUID ownerId) {
+        logger.info("Fetching albums by country {} for owner {}", countryName, ownerId);
+        return albumRepository.findByOwner_IdAndCountryNameIgnoreCase(ownerId, countryName);
     }
 
     public List<Album> findByCityNameAndCountryName(String cityName, String countryName, UUID ownerId) {
         logger.info("Fetching albums by city {} and country {} for owner {}", cityName, countryName, ownerId);
-        return albumRepository.findByOwner_IdAndCityNameAndCountryName(ownerId, cityName, countryName);
+        return albumRepository.findByOwner_IdAndCityNameIgnoreCaseAndCountryNameIgnoreCase(ownerId, cityName,
+                countryName);
     }
 
     public Optional<Album> findById(UUID id, UUID ownerId) {
@@ -99,10 +101,10 @@ public class AlbumService {
         return savedAlbum;
     }
 
-    @Transactional 
+    @Transactional
     public boolean deleteById(UUID id, UUID ownerId) {
         logger.info("Deleting album with id {} for owner {}", id, ownerId);
-        
+
         Optional<Album> optionalAlbum = findById(id, ownerId);
 
         if (optionalAlbum.isEmpty()) {
@@ -110,8 +112,8 @@ public class AlbumService {
         }
 
         List<String> objectKeys = optionalAlbum.get().getImages().stream()
-            .map(Image::getObjectKey)
-            .toList();
+                .map(Image::getObjectKey)
+                .toList();
 
         albumRepository.deleteById(id);
         eventPublisher.publishEvent(new StorageObjectsDeletedEvent(objectKeys));

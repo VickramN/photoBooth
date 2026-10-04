@@ -31,8 +31,7 @@ class AlbumServiceTest {
     private static final UUID ALBUM_ID_2 = UUID.randomUUID();
     private static final UUID MISSING_ALBUM_ID = UUID.randomUUID();
 
-
-    @Mock 
+    @Mock
     private ApplicationEventPublisher eventPublisher;
 
     @Mock
@@ -229,12 +228,28 @@ class AlbumServiceTest {
         album.setCityName("Oswego");
         album.setCountryName("USA");
 
-        when(albumRepository.findByOwner_IdAndCityName(OWNER_ID, "Oswego")).thenReturn(List.of(album));
+        when(albumRepository.findByOwner_IdAndCityNameIgnoreCase(OWNER_ID, "Oswego")).thenReturn(List.of(album));
 
         List<Album> result = albumService.findByCityName("Oswego", OWNER_ID);
 
         assertEquals(1, result.size());
         assertEquals("Oswego", result.get(0).getCityName());
+    }
+
+    @Test
+    void findByCountryNameShouldReturnMatchingAlbumsForOwner() {
+        Album album = new Album();
+        album.setId(ALBUM_ID);
+        album.setOwner(owner());
+        album.setCityName("Oswego");
+        album.setCountryName("USA");
+
+        when(albumRepository.findByOwner_IdAndCountryNameIgnoreCase(OWNER_ID, "USA")).thenReturn(List.of(album));
+
+        List<Album> result = albumService.findByCountryName("USA", OWNER_ID);
+
+        assertEquals(1, result.size());
+        assertEquals("USA", result.get(0).getCountryName());
     }
 
     @Test
@@ -245,7 +260,7 @@ class AlbumServiceTest {
         album.setCityName("Oswego");
         album.setCountryName("USA");
 
-        when(albumRepository.findByOwner_IdAndCityNameAndCountryName(OWNER_ID, "Oswego", "USA"))
+        when(albumRepository.findByOwner_IdAndCityNameIgnoreCaseAndCountryNameIgnoreCase(OWNER_ID, "Oswego", "USA"))
                 .thenReturn(List.of(album));
 
         List<Album> result = albumService.findByCityNameAndCountryName("Oswego", "USA", OWNER_ID);

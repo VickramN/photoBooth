@@ -65,6 +65,11 @@ public class AlbumController {
             return albumService.findByCityName(city, ownerId).stream().map(this::toResponse).toList();
         }
 
+        if (country != null) {
+            logger.info("GET /albums?country={} - Fetching albums by country", country);
+            return albumService.findByCountryName(country, ownerId).stream().map(this::toResponse).toList();
+        }
+
         logger.info("GET /albums - Fetching all albums");
         return albumService.findAll(ownerId).stream().map(this::toResponse).toList();
     }
