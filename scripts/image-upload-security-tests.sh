@@ -230,10 +230,6 @@ check_status "tester1 deletes own image" 204 -X DELETE "$BASE/albums/$ALBUM_ID/i
 check_status "tester2 cannot delete tester1's (already-deleted) image" 404 \
   -X DELETE "$BASE/albums/$ALBUM_ID/images/$IMAGE_ID" -H "Authorization: Bearer $TOKEN2"
 
-echo "=== Admin-only endpoint ==="
-check_status "non-admin tester1 forbidden from admin endpoint" 403 \
-  "$BASE/albums/admin/all" -H "Authorization: Bearer $TOKEN"
-
 echo "=== No auth header at all ==="
 # No httpBasic/formLogin is configured, so Spring Security's default
 # Http403ForbiddenEntryPoint fires for unauthenticated requests (403, not 401).

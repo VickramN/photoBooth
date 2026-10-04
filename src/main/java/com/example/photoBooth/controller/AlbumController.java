@@ -12,7 +12,6 @@ import com.example.photoBooth.service.ImageService;
 import com.example.photoBooth.controller.error.ApiException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -72,13 +71,6 @@ public class AlbumController {
 
         logger.info("GET /albums - Fetching all albums");
         return albumService.findAll(ownerId).stream().map(this::toResponse).toList();
-    }
-
-    @GetMapping("/admin/all")
-    @PreAuthorize("hasRole('ADMIN')")
-    public List<AlbumResponse> getAllAlbumsAdmin() {
-        logger.info("GET /albums/admin/all - Fetching all albums (admin only)");
-        return albumService.findAllAdmin().stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
