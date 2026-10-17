@@ -8,7 +8,6 @@ import com.example.photoBooth.service.ImageService;
 import com.example.photoBooth.security.JwtService;
 import com.example.photoBooth.repository.UserRepository;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
