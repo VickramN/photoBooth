@@ -13,10 +13,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 
@@ -100,5 +104,22 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ErrorResponse> handleApiException(ApiException e) {
         return ResponseEntity.status(e.getStatus()).body(new ErrorResponse(e.getCode()));
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException e) {
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+                .body(new ErrorResponse(ErrorCode.UNSUPPORTED_MEDIA_TYPE));
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMethodNotAllowed(HttpRequestMethodNotSupportedException e) {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                .body(new ErrorResponse(ErrorCode.METHOD_NOT_ALLOWED));
+    }
+
+    @ExceptionHandler({ MissingServletRequestPartException.class, MissingServletRequestParameterException.class })
+    public ResponseEntity<ErrorResponse> handleMissingParameter(Exception e) {
+        return ResponseEntity.badRequest().body(new ErrorResponse(ErrorCode.MISSING_PARAMETER));
     }
 }

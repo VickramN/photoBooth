@@ -28,6 +28,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AlbumController.class)
+
 class AlbumControllerTest {
 
     private static final UUID OWNER_ID = UUID.randomUUID();
