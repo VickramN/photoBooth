@@ -1,5 +1,6 @@
 package com.example.photoBooth.controller;
 
+import com.example.photoBooth.config.SecurityConfig;
 import com.example.photoBooth.entity.Album;
 import com.example.photoBooth.entity.User;
 import com.example.photoBooth.security.UserPrincipal;
@@ -10,6 +11,8 @@ import com.example.photoBooth.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -20,14 +23,14 @@ import java.util.UUID;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AlbumController.class)
-
+@Import(SecurityConfig.class)
 class AlbumControllerTest {
 
     private static final UUID OWNER_ID = UUID.randomUUID();
@@ -98,7 +101,8 @@ class AlbumControllerTest {
 
         mockMvc.perform(get("/albums/" + MISSING_ID)
                 .with(user(principal())))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("ALBUM_NOT_FOUND"));
 
         verify(albumService).findById(MISSING_ID, OWNER_ID);
     }
@@ -116,7 +120,6 @@ class AlbumControllerTest {
 
         mockMvc.perform(post("/albums")
                 .with(user(principal()))
-                .with(csrf())
                 .contentType("application/json")
                 .content("{\"albumName\":\"Test Album\",\"cityName\":\"Oswego\",\"countryName\":\"USA\"}"))
                 .andExpect(status().isCreated())
@@ -127,12 +130,27 @@ class AlbumControllerTest {
     }
 
     @Test
+    void createAlbumShouldReturnBadRequestWhenNameBlank() throws Exception {
+
+        mockMvc.perform(post("/albums")
+                .with(user(principal()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"albumName\":\"\",\"cityName\":\"Oswego\",\"countryName\":\"USA\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.fields.albumName").exists())
+                .andExpect(jsonPath("$.fields.cityName").doesNotExist())
+                .andExpect(jsonPath("$.fields.countryName").doesNotExist());
+
+        verifyNoInteractions(albumService);
+    }
+
+    @Test
     void deleteAlbumShouldReturnNoContentWhenDeleted() throws Exception {
         when(albumService.deleteById(ALBUM_ID, OWNER_ID)).thenReturn(true);
 
         mockMvc.perform(delete("/albums/" + ALBUM_ID)
-                .with(user(principal()))
-                .with(csrf()))
+                .with(user(principal())))
                 .andExpect(status().isNoContent());
 
         verify(albumService).deleteById(ALBUM_ID, OWNER_ID);
@@ -143,9 +161,9 @@ class AlbumControllerTest {
         when(albumService.deleteById(MISSING_ID, OWNER_ID)).thenReturn(false);
 
         mockMvc.perform(delete("/albums/" + MISSING_ID)
-                .with(user(principal()))
-                .with(csrf()))
-                .andExpect(status().isNotFound());
+                .with(user(principal())))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("ALBUM_NOT_FOUND"));
 
         verify(albumService).deleteById(MISSING_ID, OWNER_ID);
     }
@@ -191,5 +209,35 @@ class AlbumControllerTest {
                 .andExpect(jsonPath("$[0].countryName").value("USA"));
 
         verify(albumService).findByCityNameAndCountryName("Oswego", "USA", OWNER_ID);
+    }
+
+    @Test
+    void getAlbumsByCountryShouldReturnMatchingAlbums() throws Exception {
+        Album album = new Album();
+        album.setId(ALBUM_ID);
+        album.setAlbumName("Test Album");
+        album.setCityName("Oswego");
+        album.setCountryName("USA");
+
+        when(albumService.findByCountryName("USA", OWNER_ID))
+                .thenReturn(List.of(album));
+
+        mockMvc.perform(get("/albums")
+                .param("country", "USA")
+                .with(user(principal())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].countryName").value("USA"));
+
+        verify(albumService).findByCountryName("USA", OWNER_ID);
+    }
+
+    @Test
+    void getAlbumsShouldReturnForbiddenWhenUnauthenticated() throws Exception {
+
+        mockMvc.perform(get("/albums"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(albumService);
     }
 }
