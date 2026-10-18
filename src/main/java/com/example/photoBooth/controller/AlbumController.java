@@ -3,9 +3,11 @@ package com.example.photoBooth.controller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.example.photoBooth.api.AlbumResponse;
+import com.example.photoBooth.api.AlbumSummaryResponse;
 import com.example.photoBooth.api.CreateAlbumRequest;
 import com.example.photoBooth.api.ErrorCode;
 import com.example.photoBooth.entity.Album;
+import com.example.photoBooth.entity.Image;
 import com.example.photoBooth.security.UserPrincipal;
 import com.example.photoBooth.service.AlbumService;
 import com.example.photoBooth.service.ImageService;
@@ -45,6 +47,21 @@ public class AlbumController {
                 album.getImages().stream().map(imageService::toResponse).toList());
     }
 
+    private AlbumSummaryResponse toSummary(Album album) {
+        List<Image> images = album.getImages();
+        String coverUrl = images.isEmpty() ? null : imageService.toResponse(images.get(0)).url();
+
+        return new AlbumSummaryResponse(
+                album.getId(),
+                album.getAlbumName(),
+                album.getCityName(),
+                album.getCountryName(),
+                album.getLat(),
+                album.getLang(),
+                images.size(),
+                coverUrl);
+    }
+
     @GetMapping
     public List<AlbumResponse> getAlbums(
             @RequestParam(required = false) String city,
@@ -71,6 +88,12 @@ public class AlbumController {
 
         logger.info("GET /albums - Fetching all albums");
         return albumService.findAll(ownerId).stream().map(this::toResponse).toList();
+    }
+
+    @GetMapping("/summary")
+    public List<AlbumSummaryResponse> getAlbumSummaries(@AuthenticationPrincipal UserPrincipal principal) {
+        logger.info("GET /albums/summary - Fetching album summaries");
+        return albumService.findAll(principal.getId()).stream().map(this::toSummary).toList();
     }
 
     @GetMapping("/{id}")
@@ -121,4 +144,5 @@ public class AlbumController {
         logger.info("Album deleted successfully with id {}", id);
         return ResponseEntity.noContent().build();
     }
+
 }
