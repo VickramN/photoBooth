@@ -3,6 +3,7 @@ package com.example.photoBooth.controller.error;
 import com.example.photoBooth.api.ErrorCode;
 import com.example.photoBooth.api.ErrorResponse;
 import com.example.photoBooth.api.ValidationErrorResponse;
+import com.example.photoBooth.service.GeocodingUnavailableException;
 import com.example.photoBooth.service.SelfModificationException;
 import com.example.photoBooth.service.upload.ClamAvUnavailableException;
 import com.example.photoBooth.service.upload.UploadReadException;
@@ -121,5 +122,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({ MissingServletRequestPartException.class, MissingServletRequestParameterException.class })
     public ResponseEntity<ErrorResponse> handleMissingParameter(Exception e) {
         return ResponseEntity.badRequest().body(new ErrorResponse(ErrorCode.MISSING_PARAMETER));
+    }
+
+    @ExceptionHandler(GeocodingUnavailableException.class)
+    public ResponseEntity<ErrorResponse> geocodingUnavailable(GeocodingUnavailableException e) {
+        logger.warn("Geocoding unavailable", e);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(new ErrorResponse(ErrorCode.GEOCODING_UNAVAILABLE));
     }
 }

@@ -8,6 +8,7 @@ public enum ErrorCode {
     NOT_FOUND,
     FORBIDDEN,
     INTERNAL_ERROR,
+    MISSING_PARAMETER,
 
     // Auth
     USERNAME_TAKEN,
@@ -32,5 +33,7 @@ public enum ErrorCode {
 
     UNSUPPORTED_MEDIA_TYPE,
     METHOD_NOT_ALLOWED,
-    MISSING_PARAMETER,
+
+    // Geocoding
+    GEOCODING_UNAVAILABLE,
 }
