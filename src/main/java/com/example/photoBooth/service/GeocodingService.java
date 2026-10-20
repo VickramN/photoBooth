@@ -28,9 +28,6 @@ public class GeocodingService {
         this.properties = properties;
     }
 
-    public record Coordinates(double lat, double lang) {
-    }
-
     public List<LocationCandidate> search(String cityName, String countryName) {
         List<NominatimResult> results;
         try {
