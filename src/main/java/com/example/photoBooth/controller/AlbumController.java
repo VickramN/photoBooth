@@ -121,6 +121,8 @@ public class AlbumController {
         album.setAlbumName(request.getAlbumName());
         album.setCityName(request.getCityName());
         album.setCountryName(request.getCountryName());
+        album.setLat(request.getLat());
+        album.setLang(request.getLang());
 
         Album savedAlbum = albumService.create(album, principal.getId());
 

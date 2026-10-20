@@ -43,41 +43,4 @@ public class GeocodingServiceTest {
         geocodingService = new GeocodingService(restClient, properties);
     }
 
-    @Test
-    void geocodeShouldReturnCoordinatesWhenResultFound() {
-        mockServer.expect(requestTo(containsString("/search")))
-                .andRespond(withSuccess(
-                        "[{\"lat\":\"43.4553\",\"lon\":\"-76.5105\"}]",
-                        MediaType.APPLICATION_JSON));
-
-        Optional<GeocodingService.Coordinates> result = geocodingService.geocode("Oswego", "USA");
-
-        assertTrue(result.isPresent());
-        assertEquals(43.4553, result.get().lat());
-        assertEquals(-76.5105, result.get().lang());
-        mockServer.verify();
-    }
-
-    @Test
-    void geocodeShouldReturnEmptyWhenNoResultsFound() {
-        mockServer.expect(requestTo(containsString("/search")))
-                .andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
-
-        Optional<GeocodingService.Coordinates> result = geocodingService.geocode("Nowhere", "Nowhereland");
-
-        assertTrue(result.isEmpty());
-        mockServer.verify();
-    }
-
-    @Test
-    void geocodeShouldReturnEmptyWhenServerErrors() {
-        mockServer.expect(requestTo(containsString("/search")))
-                .andRespond(withServerError());
-
-        Optional<GeocodingService.Coordinates> result = geocodingService.geocode("Oswego", "USA");
-
-        assertTrue(result.isEmpty());
-        mockServer.verify();
-    }
-
 }

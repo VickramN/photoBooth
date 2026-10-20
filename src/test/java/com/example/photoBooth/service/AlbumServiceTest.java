@@ -28,7 +28,6 @@ class AlbumServiceTest {
     private static final UUID OWNER_ID = UUID.randomUUID();
     private static final UUID OTHER_OWNER_ID = UUID.randomUUID();
     private static final UUID ALBUM_ID = UUID.randomUUID();
-    private static final UUID ALBUM_ID_2 = UUID.randomUUID();
     private static final UUID MISSING_ALBUM_ID = UUID.randomUUID();
 
     @Mock
@@ -39,9 +38,6 @@ class AlbumServiceTest {
 
     @Mock
     private UserRepository userRepository;
-
-    @Mock
-    private GeocodingService geocodingService;
 
     @InjectMocks
     private AlbumService albumService;
@@ -114,28 +110,27 @@ class AlbumServiceTest {
         album.setAlbumName("Test Album");
         album.setCityName("Oswego");
         album.setCountryName("USA");
+        album.setLat(43.4553);
+        album.setLang(-76.5105);
 
         Album savedAlbum = new Album();
         savedAlbum.setId(ALBUM_ID);
         savedAlbum.setAlbumName("Test Album");
         savedAlbum.setCityName("Oswego");
         savedAlbum.setCountryName("USA");
-        savedAlbum.setLat(43.4553);
-        savedAlbum.setLang(-76.5105);
 
         when(userRepository.findById(OWNER_ID)).thenReturn(Optional.of(owner()));
-        when(geocodingService.geocode("Oswego", "USA"))
-                .thenReturn(Optional.of(new GeocodingService.Coordinates(43.4553, -76.5105)));
         when(albumRepository.save(any(Album.class))).thenReturn(savedAlbum);
 
         Album result = albumService.create(album, OWNER_ID);
 
         assertEquals(ALBUM_ID, result.getId());
-        assertEquals(43.4553, result.getLat());
 
         ArgumentCaptor<Album> captor = ArgumentCaptor.forClass(Album.class);
         verify(albumRepository).save(captor.capture());
         assertEquals(OWNER_ID, captor.getValue().getOwnerId());
+        assertEquals(43.4553, captor.getValue().getLat());
+        assertEquals(-76.5105, captor.getValue().getLang());
     }
 
     @Test
@@ -150,28 +145,6 @@ class AlbumServiceTest {
         assertThrows(IllegalStateException.class, () -> albumService.create(album, OWNER_ID));
 
         verify(albumRepository, never()).save(any(Album.class));
-    }
-
-    @Test
-    void createShouldSaveAlbumWithNullCoordinatesWhenGeocodingFails() {
-        Album album = new Album();
-        album.setAlbumName("Test Album");
-        album.setCityName("Nowhere");
-        album.setCountryName("Nowhereland");
-
-        Album savedAlbum = new Album();
-        savedAlbum.setId(ALBUM_ID_2);
-        savedAlbum.setAlbumName("Test Album");
-
-        when(userRepository.findById(OWNER_ID)).thenReturn(Optional.of(owner()));
-        when(geocodingService.geocode("Nowhere", "Nowhereland")).thenReturn(Optional.empty());
-        when(albumRepository.save(any(Album.class))).thenReturn(savedAlbum);
-
-        Album result = albumService.create(album, OWNER_ID);
-
-        assertEquals(ALBUM_ID_2, result.getId());
-        assertNull(result.getLat());
-        assertNull(result.getLang());
     }
 
     @Test

@@ -11,6 +11,7 @@ import com.example.photoBooth.service.ImageService;
 import com.example.photoBooth.security.JwtService;
 import com.example.photoBooth.repository.UserRepository;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -23,8 +24,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -118,6 +121,8 @@ class AlbumControllerTest {
                 savedAlbum.setAlbumName("Test Album");
                 savedAlbum.setCityName("Oswego");
                 savedAlbum.setCountryName("USA");
+                savedAlbum.setLat(43.4553);
+                savedAlbum.setLang(-76.5105);
 
                 when(albumService.create(any(Album.class), org.mockito.ArgumentMatchers.eq(OWNER_ID)))
                                 .thenReturn(savedAlbum);
@@ -125,12 +130,16 @@ class AlbumControllerTest {
                 mockMvc.perform(post("/albums")
                                 .with(user(principal()))
                                 .contentType("application/json")
-                                .content("{\"albumName\":\"Test Album\",\"cityName\":\"Oswego\",\"countryName\":\"USA\"}"))
+                                .content("{\"albumName\":\"Test Album\",\"cityName\":\"Oswego\",\"countryName\":\"USA\", \"lat\":43.4553,\"lang\":-76.5105}"))
                                 .andExpect(status().isCreated())
                                 .andExpect(jsonPath("$.id").value(ALBUM_ID.toString()))
                                 .andExpect(jsonPath("$.albumName").value("Test Album"));
 
-                verify(albumService).create(any(Album.class), org.mockito.ArgumentMatchers.eq(OWNER_ID));
+                ArgumentCaptor<Album> captor = ArgumentCaptor.forClass(Album.class);
+                verify(albumService).create(captor.capture(), eq(OWNER_ID));
+                assertEquals(43.4553, captor.getValue().getLat());
+                assertEquals(-76.5105, captor.getValue().getLang());
+
         }
 
         @Test
@@ -139,14 +148,89 @@ class AlbumControllerTest {
                 mockMvc.perform(post("/albums")
                                 .with(user(principal()))
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content("{\"albumName\":\"\",\"cityName\":\"Oswego\",\"countryName\":\"USA\"}"))
+                                .content("{\"albumName\":\"\",\"cityName\":\"Oswego\",\"countryName\":\"USA\", \"lat\":43.4553,\"lang\":-76.5105}"))
                                 .andExpect(status().isBadRequest())
                                 .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"))
                                 .andExpect(jsonPath("$.fields.albumName").exists())
                                 .andExpect(jsonPath("$.fields.cityName").doesNotExist())
-                                .andExpect(jsonPath("$.fields.countryName").doesNotExist());
+                                .andExpect(jsonPath("$.fields.countryName").doesNotExist())
+                                .andExpect(jsonPath("$.fields.lat").doesNotExist())
+                                .andExpect(jsonPath("$.fields.lang").doesNotExist());
 
                 verifyNoInteractions(albumService);
+        }
+
+        @Test
+        void createAlbumShouldReturnBadRequestWhenLatMissing() throws Exception {
+
+                mockMvc.perform(post("/albums")
+                                .with(user(principal()))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                                {"albumName":"Test Album","cityName":"Oswego","countryName":"USA","lang":-76.5105}
+                                                """))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"))
+                                .andExpect(jsonPath("$.fields.lat").exists())
+                                .andExpect(jsonPath("$.fields.lang").doesNotExist());
+
+                verifyNoInteractions(albumService);
+        }
+
+        @Test
+        void createAlbumShouldReturnBadRequestWhenLatOutOfRange() throws Exception {
+
+                mockMvc.perform(post("/albums")
+                                .with(user(principal()))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                                {"albumName":"Test Album","cityName":"Oswego","countryName":"USA","lat":90.1,"lang":-76.5105}
+                                                """))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"))
+                                .andExpect(jsonPath("$.fields.lat").exists())
+                                .andExpect(jsonPath("$.fields.lang").doesNotExist());
+
+                verifyNoInteractions(albumService);
+        }
+
+        @Test
+        void createAlbumShouldReturnBadRequestWhenLangOutOfRange() throws Exception {
+
+                mockMvc.perform(post("/albums")
+                                .with(user(principal()))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                                {"albumName":"Test Album","cityName":"Oswego","countryName":"USA","lat":43.4553,"lang":180.1}
+                                                """))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"))
+                                .andExpect(jsonPath("$.fields.lang").exists())
+                                .andExpect(jsonPath("$.fields.lat").doesNotExist());
+
+                verifyNoInteractions(albumService);
+        }
+
+        @Test
+        void createAlbumShouldAcceptCoordinatesOnTheBoundary() throws Exception {
+                Album savedAlbum = new Album();
+                savedAlbum.setId(ALBUM_ID);
+                savedAlbum.setAlbumName("Edge of the Map");
+
+                when(albumService.create(any(Album.class), eq(OWNER_ID))).thenReturn(savedAlbum);
+
+                mockMvc.perform(post("/albums")
+                                .with(user(principal()))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                                {"albumName":"Edge of the Map","cityName":"North Pole","countryName":"Arctic","lat":90,"lang":180}
+                                                """))
+                                .andExpect(status().isCreated());
+
+                ArgumentCaptor<Album> captor = ArgumentCaptor.forClass(Album.class);
+                verify(albumService).create(captor.capture(), eq(OWNER_ID));
+                assertEquals(90.0, captor.getValue().getLat());
+                assertEquals(180.0, captor.getValue().getLang());
         }
 
         @Test

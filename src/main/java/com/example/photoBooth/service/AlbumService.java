@@ -26,13 +26,11 @@ public class AlbumService {
 
     private final AlbumRepository albumRepository;
     private final UserRepository userRepository;
-    private final GeocodingService geocodingService;
 
     public AlbumService(AlbumRepository albumRepository, UserRepository userRepository,
-            GeocodingService geocodingService, ApplicationEventPublisher eventPublisher) {
+            ApplicationEventPublisher eventPublisher) {
         this.albumRepository = albumRepository;
         this.userRepository = userRepository;
-        this.geocodingService = geocodingService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -77,17 +75,6 @@ public class AlbumService {
         User owner = userRepository.findById(ownerId)
                 .orElseThrow(() -> new IllegalStateException("Authenticated user not found: " + ownerId));
         album.setOwner(owner);
-
-        Optional<GeocodingService.Coordinates> coordinates = geocodingService.geocode(album.getCityName(),
-                album.getCountryName());
-
-        if (coordinates.isPresent()) {
-            album.setLat(coordinates.get().lat());
-            album.setLang(coordinates.get().lang());
-        } else {
-            logger.warn("Geocoding returned no result for album with city {} and country {}", album.getCityName(),
-                    album.getCountryName());
-        }
 
         Album savedAlbum = albumRepository.save(album);
 
