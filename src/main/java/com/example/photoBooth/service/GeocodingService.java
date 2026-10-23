@@ -4,6 +4,8 @@ import com.example.photoBooth.api.LocationCandidate;
 import com.example.photoBooth.config.NominatimProperties;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -28,6 +30,7 @@ public class GeocodingService {
         this.properties = properties;
     }
 
+    @Cacheable(cacheNames = "locationSearch", sync = true, key = "#cityName.toLowerCase(T(java.util.Locale).ROOT) + '|' + #countryName.toLowerCase(T(java.util.Locale).ROOT)")
     public List<LocationCandidate> search(String cityName, String countryName) {
         List<NominatimResult> results;
         try {
