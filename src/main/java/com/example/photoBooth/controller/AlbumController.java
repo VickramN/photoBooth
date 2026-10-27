@@ -41,6 +41,8 @@ public class AlbumController {
                 album.getId(),
                 album.getAlbumName(),
                 album.getCityName(),
+                album.getRegionName(),
+                album.getRegionCode(),
                 album.getCountryName(),
                 album.getLat(),
                 album.getLang(),
@@ -55,11 +57,17 @@ public class AlbumController {
                 album.getId(),
                 album.getAlbumName(),
                 album.getCityName(),
+                album.getRegionName(),
+                album.getRegionCode(),
                 album.getCountryName(),
                 album.getLat(),
                 album.getLang(),
                 images.size(),
                 coverUrl);
+    }
+
+    private static String blankToNull(String value) {
+        return (value == null || value.isBlank()) ? null : value.trim();
     }
 
     @GetMapping
@@ -120,6 +128,8 @@ public class AlbumController {
         Album album = new Album();
         album.setAlbumName(request.getAlbumName());
         album.setCityName(request.getCityName());
+        album.setRegionName(blankToNull(request.getRegionName()));
+        album.setRegionCode(blankToNull(request.getRegionCode()));
         album.setCountryName(request.getCountryName());
         album.setLat(request.getLat());
         album.setLang(request.getLang());

@@ -16,6 +16,7 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -28,8 +29,9 @@ class GeocodingServiceCacheTest {
     private static final String PARIS = """
             [{
               "lat": "48.8534951", "lon": "2.3483915",
+              "addresstype": "city", "name": "Paris",
               "display_name": "Paris, Ile-de-France, Metropolitan France, France",
-              "address": { "city": "Paris", "country": "France" }
+              "address": { "city": "Paris", "state": "Ile-de-France", "ISO3166-2-lvl4": "FR-IDF", "country": "France" }
             }]
             """;
 
@@ -80,8 +82,8 @@ class GeocodingServiceCacheTest {
         mockServer.expect(requestTo(containsString("/search")))
                 .andRespond(withSuccess(PARIS, MediaType.APPLICATION_JSON));
 
-        geocodingService.search("Paris", "France");
-        geocodingService.search("Paris", "France");
+        geocodingService.search("Paris", null, "France");
+        geocodingService.search("Paris", null, "France");
 
         mockServer.verify();
     }
@@ -91,8 +93,8 @@ class GeocodingServiceCacheTest {
         mockServer.expect(requestTo(containsString("/search")))
                 .andRespond(withSuccess(PARIS, MediaType.APPLICATION_JSON));
 
-        geocodingService.search("Paris", "France");
-        geocodingService.search("PARIS", "france");
+        geocodingService.search("Paris", null, "France");
+        geocodingService.search("PARIS", null, "france");
 
         mockServer.verify();
     }
@@ -104,8 +106,21 @@ class GeocodingServiceCacheTest {
         mockServer.expect(requestTo(containsString("city=Lyon")))
                 .andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
 
-        geocodingService.search("Paris", "France");
-        geocodingService.search("Lyon", "France");
+        geocodingService.search("Paris", null, "France");
+        geocodingService.search("Lyon", null, "France");
+
+        mockServer.verify();
+    }
+
+    @Test
+    void sameCityWithDifferentRegionShouldEachCallNominatim() {
+        mockServer.expect(requestTo(not(containsString("state="))))
+                .andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
+        mockServer.expect(requestTo(containsString("state=Missouri")))
+                .andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
+
+        geocodingService.search("Springfield", null, "United States");
+        geocodingService.search("Springfield", "Missouri", "United States");
 
         mockServer.verify();
     }
@@ -118,8 +133,8 @@ class GeocodingServiceCacheTest {
                 .andRespond(withSuccess(PARIS, MediaType.APPLICATION_JSON));
 
         assertThrows(GeocodingUnavailableException.class,
-                () -> geocodingService.search("Paris", "France"));
-        assertEquals(1, geocodingService.search("Paris", "France").size());
+                () -> geocodingService.search("Paris", null, "France"));
+        assertEquals(1, geocodingService.search("Paris", null, "France").size());
 
         mockServer.verify();
     }

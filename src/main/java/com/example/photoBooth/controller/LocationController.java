@@ -30,12 +30,14 @@ public class LocationController {
     }
 
     @GetMapping("/search")
-    public List<LocationCandidate> search(@RequestParam String city, @RequestParam String country) {
+    public List<LocationCandidate> search(@RequestParam String city, @RequestParam(required = false) String region,
+            @RequestParam String country) {
 
         requireValidParam(city);
         requireValidParam(country);
+        String normalizedRegion = normalizeOptionalParam(region);
         logger.info("GET /locations/search - Validate Locations");
-        return geocodingService.search(city.trim(), country.trim());
+        return geocodingService.search(city.trim(), normalizedRegion, country.trim());
 
     }
 
@@ -44,6 +46,19 @@ public class LocationController {
             logger.warn("Invalid location search parameter (length {})", value.length());
             throw new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_PARAMETER);
         }
+    }
+
+    private String normalizeOptionalParam(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        if (value.trim().length() > MAX_PARAM_LENGTH) {
+            logger.warn("Invalid location search parameter (length {})", value.length());
+            throw new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_PARAMETER);
+        }
+
+        return value.trim();
     }
 
 }

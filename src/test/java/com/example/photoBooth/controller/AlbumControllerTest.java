@@ -25,6 +25,7 @@ import java.util.UUID;
 
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -384,5 +385,86 @@ class AlbumControllerTest {
                                 .andExpect(jsonPath("$[0].lang").value(nullValue()));
 
                 verifyNoInteractions(imageService);
+        }
+
+        @Test
+        void createAlbumShouldPassRegionThrough() throws Exception {
+                Album savedAlbum = new Album();
+                savedAlbum.setId(ALBUM_ID);
+                savedAlbum.setAlbumName("Springfield Trip");
+                when(albumService.create(any(Album.class), eq(OWNER_ID))).thenReturn(savedAlbum);
+
+                mockMvc.perform(post("/albums")
+                                .with(user(principal()))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                                {"albumName":"Springfield Trip","cityName":"Springfield","regionName":"Missouri",
+                                                 "regionCode":"US-MO","countryName":"United States","lat":37.2081729,"lang":-93.2922715}
+                                                """))
+                                .andExpect(status().isCreated());
+
+                ArgumentCaptor<Album> captor = ArgumentCaptor.forClass(Album.class);
+                verify(albumService).create(captor.capture(), eq(OWNER_ID));
+                assertEquals("Missouri", captor.getValue().getRegionName());
+                assertEquals("US-MO", captor.getValue().getRegionCode());
+        }
+
+        @Test
+        void createAlbumShouldStoreBlankRegionNameAsNull() throws Exception {
+                Album savedAlbum = new Album();
+                savedAlbum.setId(ALBUM_ID);
+                when(albumService.create(any(Album.class), eq(OWNER_ID))).thenReturn(savedAlbum);
+
+                mockMvc.perform(post("/albums")
+                                .with(user(principal()))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                                {"albumName":"Singapore","cityName":"Singapore","regionName":"   ",
+                                                 "countryName":"Singapore","lat":1.29,"lang":103.85}
+                                                """))
+                                .andExpect(status().isCreated());
+
+                ArgumentCaptor<Album> captor = ArgumentCaptor.forClass(Album.class);
+                verify(albumService).create(captor.capture(), eq(OWNER_ID));
+                assertNull(captor.getValue().getRegionName());
+                assertNull(captor.getValue().getRegionCode());
+        }
+
+        @Test
+        void createAlbumShouldRejectMalformedRegionCode() throws Exception {
+                mockMvc.perform(post("/albums")
+                                .with(user(principal()))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                                {"albumName":"Test Album","cityName":"Oswego","regionName":"New York",
+                                                 "regionCode":"banana","countryName":"USA","lat":43.4553,"lang":-76.5105}
+                                                """))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"))
+                                .andExpect(jsonPath("$.fields.regionCode").exists())
+                                .andExpect(jsonPath("$.fields.regionName").doesNotExist());
+
+                verifyNoInteractions(albumService);
+        }
+
+        @Test
+        void getAlbumSummariesShouldIncludeRegion() throws Exception {
+                Album album = new Album();
+                album.setId(ALBUM_ID);
+                album.setAlbumName("Boston Trip");
+                album.setCityName("Boston");
+                album.setRegionName("Massachusetts");
+                album.setRegionCode("US-MA");
+                album.setCountryName("United States");
+                album.setLat(42.3588336);
+                album.setLang(-71.0578303);
+
+                when(albumService.findAll(OWNER_ID)).thenReturn(List.of(album));
+
+                mockMvc.perform(get("/albums/summary")
+                                .with(user(principal())))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$[0].regionName").value("Massachusetts"))
+                                .andExpect(jsonPath("$[0].regionCode").value("US-MA"));
         }
 }

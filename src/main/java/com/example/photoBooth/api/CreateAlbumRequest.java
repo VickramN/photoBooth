@@ -4,6 +4,7 @@ import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public class CreateAlbumRequest {
@@ -19,6 +20,13 @@ public class CreateAlbumRequest {
     @NotBlank
     @Size(max = 255)
     private String countryName;
+
+    @Size(max = 225)
+    private String regionName;
+
+    @Size(max = 10)
+    @Pattern(regexp = "^[A-Z]{2}-[A-Z0-9]{1,3}$")
+    private String regionCode;
 
     @NotNull
     @DecimalMin("-90.0")
@@ -72,4 +80,21 @@ public class CreateAlbumRequest {
     public void setLang(Double lang) {
         this.lang = lang;
     }
+
+    public String getRegionName() {
+        return regionName;
+    }
+
+    public void setRegionName(String regionName) {
+        this.regionName = regionName;
+    }
+
+    public String getRegionCode() {
+        return regionCode;
+    }
+
+    public void setRegionCode(String regionCode) {
+        this.regionCode = regionCode;
+    }
+
 }

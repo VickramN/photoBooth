@@ -27,6 +27,12 @@ public class Album {
     @Column(name = "country_name", nullable = false)
     private String countryName;
 
+    @Column(name = "region_name")
+    private String regionName;
+
+    @Column(name = "region_code")
+    private String regionCode;
+
     private Double lat;
     private Double lang;
     // I chose to abbreviate longitude as lang, if any future engineer's that are
@@ -137,5 +143,21 @@ public class Album {
 
     public Instant getCreatedAt() {
         return created_at;
+    }
+
+    public void setRegionName(String regionName) {
+        this.regionName = regionName;
+    }
+
+    public String getRegionName() {
+        return regionName;
+    }
+
+    public void setRegionCode(String regioncode) {
+        this.regionCode = regioncode;
+    }
+
+    public String getRegionCode() {
+        return regionCode;
     }
 }

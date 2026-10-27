@@ -15,11 +15,14 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 
 @Service
 public class GeocodingService {
+
+    private static final Set<String> SETTLEMENT_TYPES = Set.of("city", "town", "village");
 
     private final RestClient restClient;
     private final NominatimProperties properties;
@@ -30,16 +33,17 @@ public class GeocodingService {
         this.properties = properties;
     }
 
-    @Cacheable(cacheNames = "locationSearch", sync = true, key = "#cityName.toLowerCase(T(java.util.Locale).ROOT) + '|' + #countryName.toLowerCase(T(java.util.Locale).ROOT)")
-    public List<LocationCandidate> search(String cityName, String countryName) {
+    @Cacheable(cacheNames = "locationSearch", sync = true, key = "T(com.example.photoBooth.service.GeocodingService).cacheKey(#cityName, #region, #countryName)")
+    public List<LocationCandidate> search(String cityName, String region, String countryName) {
         List<NominatimResult> results;
         try {
             throttle();
             results = restClient.get()
                     .uri(builder -> builder.path("/search")
                             .queryParam("city", cityName)
+                            .queryParamIfPresent("state", Optional.ofNullable(region))
                             .queryParam("country", countryName)
-                            .queryParam("format", "json")
+                            .queryParam("format", "jsonv2")
                             .queryParam("addressdetails", 1)
                             .queryParam("accept-language", "en")
                             .queryParam("limit", 5)
@@ -55,33 +59,44 @@ public class GeocodingService {
             return List.of();
         }
 
-        Set<String> seenCandidates = new HashSet<>();
+        Set<String> seenLabels = new HashSet<>();
+        Set<String> seenCoordinates = new HashSet<>();
 
         return results.stream()
                 .map(this::toCandidate)
                 .flatMap(Optional::stream)
-                .filter(candidate -> seenCandidates.add(candidate.displayName()))
+                .filter(candidate -> {
+                    String coordinates = String.format(Locale.ROOT, "%.4f,%.4f", candidate.lat(), candidate.lang());
+                    boolean newLabel = seenLabels.add(candidate.displayName());
+                    boolean newCoordinates = seenCoordinates.add(coordinates);
+                    return newLabel && newCoordinates;
+                })
                 .toList();
     }
 
     private Optional<LocationCandidate> toCandidate(NominatimResult result) {
         NominatimAddress address = result.address();
 
-        if (address == null || result.lat() == null || result.lon() == null) {
+        if (address == null
+                || result.lat() == null
+                || result.lon() == null
+                || result.name() == null
+                || result.addresstype() == null
+                || address.country() == null) {
             return Optional.empty();
         }
 
-        String city = address.city() != null ? address.city()
-                : address.town() != null ? address.town()
-                        : address.village();
-
-        if (city == null || address.country() == null) {
+        if (!SETTLEMENT_TYPES.contains(result.addresstype())) {
             return Optional.empty();
         }
+
+        String regionName = address.state() != null ? address.state() : address.province();
 
         return Optional.of(new LocationCandidate(
                 result.displayName(),
-                city,
+                result.name(),
+                regionName,
+                address.regionCode(),
                 address.country(),
                 Double.parseDouble(result.lat()),
                 Double.parseDouble(result.lon())));
@@ -100,12 +115,24 @@ public class GeocodingService {
         lastRequestTime = Instant.now();
     }
 
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    private record NominatimAddress(String city, String town, String village, String country) {
+    public static String cacheKey(String city, String region, String country) {
+        String normalizedRegion = region == null ? "" : region.toLowerCase(Locale.ROOT);
+        return city.toLowerCase(Locale.ROOT) + "|" + normalizedRegion + "|" + country.toLowerCase(Locale.ROOT);
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private record NominatimResult(String lat, String lon, @JsonProperty("display_name") String displayName,
+    private record NominatimAddress(
+            String state,
+            String province,
+            @JsonProperty("ISO3166-2-lvl4") String regionCode,
+            String country) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record NominatimResult(String lat, String lon,
+            @JsonProperty("display_name") String displayName,
+            String name,
+            String addresstype,
             NominatimAddress address) {
     }
 }

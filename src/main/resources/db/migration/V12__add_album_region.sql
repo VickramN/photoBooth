@@ -1,0 +1,2 @@
+ALTER TABLE album ADD COLUMN region_name VARCHAR(255);
+ALTER TABLE album ADD COLUMN region_code VARCHAR(10);
