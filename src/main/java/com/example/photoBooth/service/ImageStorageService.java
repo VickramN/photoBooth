@@ -1,6 +1,8 @@
 package com.example.photoBooth.service;
 
 import com.example.photoBooth.config.R2Properties;
+import com.example.photoBooth.config.UploadProperties;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -18,19 +20,23 @@ public class ImageStorageService {
 
     private final S3Client s3Client;
     private final R2Properties r2Properties;
+    private final UploadProperties uploadProperties;
 
-    public ImageStorageService(S3Client s3Client, R2Properties r2Properties) {
+    public ImageStorageService(S3Client s3Client, R2Properties r2Properties, UploadProperties uploadProperties) {
         this.s3Client = s3Client;
         this.r2Properties = r2Properties;
+        this.uploadProperties = uploadProperties;
     }
 
     public String upload(UUID ownerId, UUID albumId, UUID storageId, byte[] bytes) {
         String key = buildKey(ownerId, albumId, storageId);
+        Long maxAgeSeconds = uploadProperties.getPresignedUrl().getExpiryMinutes() * 60L;
 
         PutObjectRequest request = PutObjectRequest.builder()
                 .bucket(r2Properties.getBucketName())
                 .key(key)
                 .contentType("image/jpeg")
+                .cacheControl("private, max-age=" + maxAgeSeconds)
                 .build();
 
         s3Client.putObject(request, RequestBody.fromBytes(bytes));

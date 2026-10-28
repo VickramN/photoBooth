@@ -1,6 +1,8 @@
 package com.example.photoBooth.service;
 
 import com.example.photoBooth.config.R2Properties;
+import com.example.photoBooth.config.UploadProperties;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -20,18 +22,19 @@ import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 public class ImageStorageServiceTest {
-    
-    @Mock 
+
+    @Mock
     private S3Client s3Client;
 
     private ImageStorageService imageStorageService;
 
-    @Test 
-    void uploadShouldStoreUnderOwnerPrefixedKeyAndReturnIt(){
+    @Test
+    void uploadShouldStoreUnderOwnerPrefixedKeyAndReturnIt() {
         R2Properties properties = new R2Properties();
+        UploadProperties uploadProperties = new UploadProperties();
         properties.setBucketName("test-bucket");
 
-        imageStorageService = new ImageStorageService(s3Client, properties);
+        imageStorageService = new ImageStorageService(s3Client, properties, uploadProperties);
 
         UUID ownerId = UUID.randomUUID();
         UUID albumId = UUID.randomUUID();
@@ -49,12 +52,13 @@ public class ImageStorageServiceTest {
         assertTrue(requestCaptor.getValue().contentType().equals("image/jpeg"));
     }
 
-    @Test 
+    @Test
     void deleteShouldRemoveObjectKey() {
         R2Properties properties = new R2Properties();
+        UploadProperties uploadProperties = new UploadProperties();
         properties.setBucketName("test-bucket");
 
-        imageStorageService = new ImageStorageService(s3Client, properties);
+        imageStorageService = new ImageStorageService(s3Client, properties, uploadProperties);
 
         imageStorageService.delete("users/owner/albums/album/storage.jpg");
 

@@ -1,7 +1,10 @@
 package com.example.photoBooth.service.upload;
 
+import com.example.photoBooth.config.CacheConfig;
 import com.example.photoBooth.config.R2Properties;
 import com.example.photoBooth.config.UploadProperties;
+
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -22,6 +25,7 @@ public class PresignedUrlService {
         this.uploadProperties = uploadProperties;
     }
 
+    @Cacheable(CacheConfig.PRESIGNED_URLS)
     public String generateGetUrl(String objectKey) {
         GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                 .bucket(r2Properties.getBucketName())

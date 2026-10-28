@@ -2,7 +2,7 @@ package com.example.photoBooth.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties(prefix= "upload")
+@ConfigurationProperties(prefix = "upload")
 public class UploadProperties {
 
     private long maxFileSizeBytes = 20_971_520L;
@@ -14,50 +14,57 @@ public class UploadProperties {
         return maxFileSizeBytes;
     }
 
-    public void setMaxFileSizeBytes(long maxFileSizeBytes){
+    public void setMaxFileSizeBytes(long maxFileSizeBytes) {
         this.maxFileSizeBytes = maxFileSizeBytes;
     }
 
-    public int getMaxDimensionPx(){
+    public int getMaxDimensionPx() {
         return maxDimensionPx;
     }
 
-    public void setMaxDimensionPx(int maxDimensionPx){
+    public void setMaxDimensionPx(int maxDimensionPx) {
         this.maxDimensionPx = maxDimensionPx;
     }
 
-    public RateLimit getRateLimit(){
+    public RateLimit getRateLimit() {
         return rateLimit;
     }
 
-    public PresignedUrl getPresignedUrl(){
+    public PresignedUrl getPresignedUrl() {
         return presignedUrl;
     }
-
 
     public static class RateLimit {
         private int maxPerHour = 100;
 
-        public int getMaxPerHour(){
+        public int getMaxPerHour() {
             return maxPerHour;
         }
 
-        public void setMaxPerHour(int maxPerHour){
+        public void setMaxPerHour(int maxPerHour) {
             this.maxPerHour = maxPerHour;
         }
     }
-    
-    public static class PresignedUrl{
-        private int expiryMinutes = 15;
 
-        public int getExpiryMinutes(){
+    public static class PresignedUrl {
+        private int expiryMinutes = 15;
+        private int cacheMinutes = 10;
+
+        public int getExpiryMinutes() {
             return expiryMinutes;
         }
 
-        public void setExpiryMinutes(int expiryMinutes){
+        public void setExpiryMinutes(int expiryMinutes) {
             this.expiryMinutes = expiryMinutes;
+        }
+
+        public int getCacheMinutes() {
+            return cacheMinutes;
+        }
+
+        public void setCacheMinutes(int cacheMinutes) {
+            this.cacheMinutes = cacheMinutes;
         }
     }
 
-    
 }
