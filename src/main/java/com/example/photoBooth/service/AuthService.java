@@ -38,6 +38,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final PasswordResetNotifier passwordResetNotifier;
 
     @Value("${password-reset.expiration-minutes}")
     private long resetTokenExpirationMinutes;
@@ -45,13 +46,14 @@ public class AuthService {
     public AuthService(UserRepository userRepository, RoleRepository roleRepository,
             PasswordResetTokenRepository passwordResetTokenRepository,
             PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager,
-            JwtService jwtService) {
+            JwtService jwtService, PasswordResetNotifier passwordResetNotifier) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
+        this.passwordResetNotifier = passwordResetNotifier;
     }
 
     public void register(String username, String rawPassword) {
@@ -99,7 +101,7 @@ public class AuthService {
 
         passwordResetTokenRepository.save(new PasswordResetToken(user, tokenHash, expiresAt));
 
-        logger.info("Password reset token for user '{}': {}", username, rawToken);
+        passwordResetNotifier.sendResetToken(user, rawToken);
     }
 
     @Transactional(noRollbackFor = IllegalArgumentException.class)
