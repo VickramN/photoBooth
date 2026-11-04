@@ -30,7 +30,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                                     FilterChain filterChain) throws ServletException, IOException {
+            FilterChain filterChain) throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
 
@@ -59,18 +59,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         .truncatedTo(ChronoUnit.SECONDS)
                         .isAfter(claims.getIssuedAt().toInstant());
 
-                if (!passwordChangedAfterTokenIssued) {
+                if (user.isEnabled() && !passwordChangedAfterTokenIssued) {
                     UserPrincipal principal = new UserPrincipal(user);
 
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
+                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                            principal, null, principal.getAuthorities());
 
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
             }
         } catch (JwtException e) {
             // Invalid, expired, or malformed token — leave the request unauthenticated.
-            // Spring Security's authorization rules will reject it if the endpoint requires auth.
+            // Spring Security's authorization rules will reject it if the endpoint requires
+            // auth.
         }
 
         filterChain.doFilter(request, response);
