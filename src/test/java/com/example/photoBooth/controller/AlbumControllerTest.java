@@ -322,10 +322,12 @@ class AlbumControllerTest {
         }
 
         @Test
-        void getAlbumsShouldReturnForbiddenWhenUnauthenticated() throws Exception {
+        void getAlbumsShouldReturnUnauthorizedWhenUnauthenticated() throws Exception {
 
                 mockMvc.perform(get("/albums"))
-                                .andExpect(status().isForbidden());
+                                .andExpect(status().isUnauthorized())
+                                .andExpect(header().string("WWW-Authenticate", "Bearer"))
+                                .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
 
                 verifyNoInteractions(albumService);
         }
@@ -466,5 +468,18 @@ class AlbumControllerTest {
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$[0].regionName").value("Massachusetts"))
                                 .andExpect(jsonPath("$[0].regionCode").value("US-MA"));
+        }
+
+        @Test
+        void getAlbumsShouldReturnUnauthorizedWhenTokenInvalid() throws Exception {
+                when(jwtService.validateAndParseClaims("garbage"))
+                                .thenThrow(new io.jsonwebtoken.MalformedJwtException("bad token"));
+
+                mockMvc.perform(get("/albums")
+                                .header("Authorization", "Bearer garbage"))
+                                .andExpect(status().isUnauthorized())
+                                .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
+
+                verifyNoInteractions(albumService);
         }
 }

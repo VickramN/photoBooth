@@ -174,13 +174,15 @@ public class LocationControllerTest {
         }
 
         @Test
-        void searchShouldReturnForbiddenWhenUnauthenticated() throws Exception {
+        void searchShouldReturnUnauthorizedWhenUnauthenticated() throws Exception {
                 // layer 4: change to 401 and assert the error body once the entry point is
                 // configured
                 mockMvc.perform(get("/locations/search")
                                 .param("city", "Paris")
                                 .param("country", "France"))
-                                .andExpect(status().isForbidden());
+                                .andExpect(status().isUnauthorized())
+                                .andExpect(header().string("WWW-Authenticate", "Bearer"))
+                                .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
 
                 verifyNoInteractions(geocodingService);
         }

@@ -9,6 +9,7 @@ public enum ErrorCode {
     FORBIDDEN,
     INTERNAL_ERROR,
     MISSING_PARAMETER,
+    UNAUTHORIZED,
 
     // Auth
     USERNAME_TAKEN,
