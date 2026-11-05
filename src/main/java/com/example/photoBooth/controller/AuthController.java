@@ -3,6 +3,8 @@ package com.example.photoBooth.controller;
 import com.example.photoBooth.api.AuthResponse;
 import com.example.photoBooth.api.ForgotPasswordRequest;
 import com.example.photoBooth.api.ResetPasswordRequest;
+import com.example.photoBooth.security.RateLimit;
+import com.example.photoBooth.security.RequestRateLimiter;
 import com.example.photoBooth.controller.error.ApiException;
 import com.example.photoBooth.api.LoginRequest;
 import com.example.photoBooth.api.RegisterRequest;
@@ -15,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
 @RestController
@@ -25,12 +28,16 @@ public class AuthController {
 
     private final AuthService authService;
 
-    public AuthController(AuthService authService) {
+    private final RequestRateLimiter requestRateLimiter;
+
+    public AuthController(AuthService authService, RequestRateLimiter requestRateLimiter) {
         this.authService = authService;
+        this.requestRateLimiter = requestRateLimiter;
     }
 
     @PostMapping("/register")
-    public ResponseEntity<Void> register(@Valid @RequestBody RegisterRequest request) {
+    public ResponseEntity<Void> register(@Valid @RequestBody RegisterRequest request, HttpServletRequest httpRequest) {
+        requestRateLimiter.consume(RateLimit.REGISTER_IP, httpRequest.getRemoteAddr());
         logger.info("POST /auth/register - Registering user {}", request.getUsername());
 
         try {
@@ -43,20 +50,27 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpRequest) {
+        requestRateLimiter.consume(RateLimit.LOGIN_IP, httpRequest.getRemoteAddr());
+        requestRateLimiter.requireAvailable(RateLimit.LOGIN_FAILURES_USERNAME, request.getUsername());
         logger.info("POST /auth/login - Login attempt for {}", request.getUsername());
 
         try {
             String token = authService.login(request.getUsername(), request.getPassword());
             return ResponseEntity.ok(new AuthResponse(token));
         } catch (AuthenticationException e) {
+            requestRateLimiter.recordFailure(RateLimit.LOGIN_FAILURES_USERNAME, request.getUsername());
             logger.warn("Login failed for {}: {}", request.getUsername(), e.getClass().getSimpleName());
             throw new ApiException(HttpStatus.UNAUTHORIZED, ErrorCode.INVALID_CREDENTIALS);
         }
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<Void> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+    public ResponseEntity<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request,
+            HttpServletRequest httpRequest) {
+        requestRateLimiter.consume(RateLimit.FORGOT_PASSWORD_IP, httpRequest.getRemoteAddr());
+        requestRateLimiter.consume(RateLimit.FORGOT_PASSWORD_USERNAME, request.getUsername());
         logger.info("POST /auth/forgot-password - Request for {}", request.getUsername());
         authService.requestPasswordReset(request.getUsername());
         return ResponseEntity.ok().build();

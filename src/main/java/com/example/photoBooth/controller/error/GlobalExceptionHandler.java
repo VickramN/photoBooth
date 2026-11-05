@@ -3,6 +3,7 @@ package com.example.photoBooth.controller.error;
 import com.example.photoBooth.api.ErrorCode;
 import com.example.photoBooth.api.ErrorResponse;
 import com.example.photoBooth.api.ValidationErrorResponse;
+import com.example.photoBooth.security.RateLimitedException;
 import com.example.photoBooth.service.GeocodingUnavailableException;
 import com.example.photoBooth.service.SelfModificationException;
 import com.example.photoBooth.service.upload.ClamAvUnavailableException;
@@ -11,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -129,5 +131,12 @@ public class GlobalExceptionHandler {
         logger.warn("Geocoding unavailable", e);
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(new ErrorResponse(ErrorCode.GEOCODING_UNAVAILABLE));
+    }
+
+    @ExceptionHandler(RateLimitedException.class)
+    public ResponseEntity<ErrorResponse> rateLimited(RateLimitedException e) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(e.getRetryAfterSeconds()))
+                .body(new ErrorResponse(ErrorCode.RATE_LIMITED));
     }
 }

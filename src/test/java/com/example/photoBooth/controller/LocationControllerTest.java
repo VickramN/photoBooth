@@ -1,5 +1,8 @@
 package com.example.photoBooth.controller;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -18,6 +21,9 @@ import com.example.photoBooth.api.LocationCandidate;
 import com.example.photoBooth.config.SecurityConfig;
 import com.example.photoBooth.repository.UserRepository;
 import com.example.photoBooth.security.JwtService;
+import com.example.photoBooth.security.RequestRateLimiter;
+import com.example.photoBooth.security.RateLimit;
+import com.example.photoBooth.security.RateLimitedException;
 import com.example.photoBooth.service.GeocodingService;
 import com.example.photoBooth.service.GeocodingUnavailableException;
 import com.example.photoBooth.entity.User;
@@ -43,6 +49,9 @@ public class LocationControllerTest {
 
         @MockitoBean
         private UserRepository userRepository;
+
+        @MockitoBean
+        private RequestRateLimiter requestRateLimiter;
 
         private UserPrincipal principal() {
                 User owner = new User();
@@ -183,6 +192,22 @@ public class LocationControllerTest {
                                 .andExpect(status().isUnauthorized())
                                 .andExpect(header().string("WWW-Authenticate", "Bearer"))
                                 .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
+
+                verifyNoInteractions(geocodingService);
+        }
+
+        @Test
+        void searchShouldReturnTooManyRequestsWhenUserLimited() throws Exception {
+                doThrow(new RateLimitedException(30))
+                                .when(requestRateLimiter).consume(eq(RateLimit.LOCATION_SEARCH_USER), any());
+
+                mockMvc.perform(get("/locations/search")
+                                .with(user(principal()))
+                                .param("city", "Paris")
+                                .param("country", "France"))
+                                .andExpect(status().isTooManyRequests())
+                                .andExpect(header().string("Retry-After", "30"))
+                                .andExpect(jsonPath("$.error").value("RATE_LIMITED"));
 
                 verifyNoInteractions(geocodingService);
         }

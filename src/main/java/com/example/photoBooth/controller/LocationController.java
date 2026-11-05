@@ -5,6 +5,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -13,6 +14,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.photoBooth.api.ErrorCode;
 import com.example.photoBooth.api.LocationCandidate;
 import com.example.photoBooth.controller.error.ApiException;
+import com.example.photoBooth.security.RateLimit;
+import com.example.photoBooth.security.RequestRateLimiter;
+import com.example.photoBooth.security.UserPrincipal;
 import com.example.photoBooth.service.GeocodingService;
 
 @RestController
@@ -25,17 +29,21 @@ public class LocationController {
 
     private final GeocodingService geocodingService;
 
-    public LocationController(GeocodingService geocodingService) {
+    private final RequestRateLimiter requestRateLimiter;
+
+    public LocationController(GeocodingService geocodingService, RequestRateLimiter requestRateLimiter) {
         this.geocodingService = geocodingService;
+        this.requestRateLimiter = requestRateLimiter;
     }
 
     @GetMapping("/search")
     public List<LocationCandidate> search(@RequestParam String city, @RequestParam(required = false) String region,
-            @RequestParam String country) {
+            @RequestParam String country, @AuthenticationPrincipal UserPrincipal principal) {
 
         requireValidParam(city);
         requireValidParam(country);
         String normalizedRegion = normalizeOptionalParam(region);
+        requestRateLimiter.consume(RateLimit.LOCATION_SEARCH_USER, principal.getId().toString());
         logger.info("GET /locations/search - Validate Locations");
         return geocodingService.search(city.trim(), normalizedRegion, country.trim());
 
