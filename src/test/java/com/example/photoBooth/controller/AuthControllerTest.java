@@ -207,4 +207,28 @@ public class AuthControllerTest {
                 verifyNoInteractions(authService);
         }
 
+        @Test
+        void registerRejectsUsernameWithNewline() throws Exception {
+                mockMvc.perform(post("/auth/register")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"username\": \"ali\\nce\", \"password\": \"SomePass123!\"}"))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"))
+                                .andExpect(jsonPath("$.fields.username").exists());
+
+                verifyNoInteractions(authService);
+        }
+
+        @Test
+        void loginRejectsUsernameWithNewlineBeforeRateLimiting() throws Exception {
+                mockMvc.perform(post("/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"username\": \"alice\\nINFO forged line\", \"password\": \"SomePass!23\"}"))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.fields.username").exists());
+
+                verifyNoInteractions(authService);
+                verifyNoInteractions(requestRateLimiter);
+        }
+
 }
