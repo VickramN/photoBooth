@@ -123,7 +123,7 @@ public class AlbumController {
     @PostMapping
     public ResponseEntity<AlbumResponse> createAlbum(@Valid @RequestBody CreateAlbumRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
-        logger.info("POST /albums - Creating album with name {}", request.getAlbumName());
+        logger.info("POST /albums - Creating album");
 
         Album album = new Album();
         album.setAlbumName(request.getAlbumName());

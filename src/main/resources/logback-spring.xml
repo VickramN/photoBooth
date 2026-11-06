@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <conversionRule conversionWord="m" class="com.example.photoBooth.logging.NewlineEscapingMessageConverter"/>
+    <conversionRule conversionWord="msg" class="com.example.photoBooth.logging.NewlineEscapingMessageConverter"/>
+    <conversionRule conversionWord="message" class="com.example.photoBooth.logging.NewlineEscapingMessageConverter"/>
+
+    <include resource="org/springframework/boot/logging/logback/base.xml"/>
+</configuration>

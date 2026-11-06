@@ -70,7 +70,7 @@ public class AlbumService {
     }
 
     public Album create(Album album, UUID ownerId) {
-        logger.info("Creating album with name {} for owner {}", album.getAlbumName(), ownerId);
+        logger.info("Creating album for owner {}", ownerId);
 
         User owner = userRepository.findById(ownerId)
                 .orElseThrow(() -> new IllegalStateException("Authenticated user not found: " + ownerId));
