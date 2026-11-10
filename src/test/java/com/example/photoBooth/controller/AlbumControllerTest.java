@@ -482,4 +482,26 @@ class AlbumControllerTest {
 
                 verifyNoInteractions(albumService);
         }
+
+        @Test
+        void preflightFromFrontendOriginShouldBeAllowed() throws Exception {
+                mockMvc.perform(options("/albums")
+                                .header("Origin", "http://localhost:5173")
+                                .header("Access-Control-Request-Method", "POST")
+                                .header("Access-Control-Request-Headers", "Content-Type"))
+                                .andExpect(status().isOk())
+                                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"))
+                                .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
+
+                verifyNoInteractions(albumService);
+        }
+
+        @Test
+        void preflightFromUnknownOriginShouldBeRejected() throws Exception {
+                mockMvc.perform(options("/albums")
+                                .header("Origin", "https://evil.example")
+                                .header("Access-Control-Request-Method", "POST"))
+                                .andExpect(status().isForbidden())
+                                .andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
+        }
 }
