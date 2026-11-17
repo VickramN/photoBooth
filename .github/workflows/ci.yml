@@ -6,7 +6,7 @@ on:
   pull_request:
 
 permissions:
-  content: read
+  contents: read
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -26,7 +26,7 @@ jobs:
           cache: maven
 
       - name: Run tests
-        run: ./mvnw -B tests
+        run: ./mvnw -B test
 
   frontend:
     name: Frontend lint and build
@@ -41,7 +41,7 @@ jobs:
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: frontend/packages-lock.json
+          cache-dependency-path: frontend/package-lock.json
 
       - run: npm ci
       - run: npm run lint
