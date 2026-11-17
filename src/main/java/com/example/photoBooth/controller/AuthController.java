@@ -5,6 +5,7 @@ import com.example.photoBooth.api.ForgotPasswordRequest;
 import com.example.photoBooth.api.ResetPasswordRequest;
 import com.example.photoBooth.security.RateLimit;
 import com.example.photoBooth.security.RequestRateLimiter;
+import com.example.photoBooth.security.SessionCookies;
 import com.example.photoBooth.controller.error.ApiException;
 import com.example.photoBooth.api.LoginRequest;
 import com.example.photoBooth.api.RegisterRequest;
@@ -12,6 +13,7 @@ import com.example.photoBooth.service.AuthService;
 import com.example.photoBooth.api.ErrorCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.AuthenticationException;
@@ -30,9 +32,13 @@ public class AuthController {
 
     private final RequestRateLimiter requestRateLimiter;
 
-    public AuthController(AuthService authService, RequestRateLimiter requestRateLimiter) {
+    private final SessionCookies sessionCookies;
+
+    public AuthController(AuthService authService, RequestRateLimiter requestRateLimiter,
+            SessionCookies sessionCookies) {
         this.authService = authService;
         this.requestRateLimiter = requestRateLimiter;
+        this.sessionCookies = sessionCookies;
     }
 
     @PostMapping("/register")
@@ -58,12 +64,22 @@ public class AuthController {
 
         try {
             String token = authService.login(request.getUsername(), request.getPassword());
-            return ResponseEntity.ok(new AuthResponse(token));
+            return ResponseEntity.noContent()
+                    .header(HttpHeaders.SET_COOKIE, sessionCookies.create(token).toString())
+                    .build();
         } catch (AuthenticationException e) {
             requestRateLimiter.recordFailure(RateLimit.LOGIN_FAILURES_USERNAME, request.getUsername());
             logger.warn("Login failed for {}: {}", request.getUsername(), e.getClass().getSimpleName());
             throw new ApiException(HttpStatus.UNAUTHORIZED, ErrorCode.INVALID_CREDENTIALS);
         }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout() {
+        logger.info("POST /auth/logout");
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, sessionCookies.clear().toString())
+                .build();
     }
 
     @PostMapping("/forgot-password")

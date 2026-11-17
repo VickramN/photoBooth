@@ -2,6 +2,9 @@ package com.example.photoBooth.security;
 
 import com.example.photoBooth.entity.User;
 import com.example.photoBooth.repository.UserRepository;
+
+import jakarta.servlet.http.Cookie;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,6 +25,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -61,7 +65,7 @@ class JwtAuthenticationFilterTest {
 
     private MockFilterChain runFilterWith(String token) throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/albums");
-        request.addHeader("Authorization", "Bearer " + token);
+        request.setCookies(new Cookie(SessionCookies.NAME, token));
         MockFilterChain chain = new MockFilterChain();
         filter.doFilter(request, new MockHttpServletResponse(), chain);
         return chain;
@@ -100,5 +104,19 @@ class JwtAuthenticationFilterTest {
         runFilterWith(oldToken);
 
         assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    @Test
+    void validTokenInAuthorizationHeaderShouldNotBeAuthenticated() throws Exception {
+        String token = jwtService.generateToken("alice", USER_ID);
+
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/albums");
+        request.addHeader("Authorization", "Bearer " + token);
+        MockFilterChain chain = new MockFilterChain();
+        filter.doFilter(request, new MockHttpServletResponse(), chain);
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        verifyNoInteractions(userRepository); // header was ignored entirely
+        assertNotNull(chain.getRequest()); // request still continues down the chain
     }
 }

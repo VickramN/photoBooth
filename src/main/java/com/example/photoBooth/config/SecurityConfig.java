@@ -55,7 +55,6 @@ public class SecurityConfig {
                         .anyRequest().authenticated())
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, e) -> {
-                            response.setHeader("WWW-Authenticate", "Bearer");
                             writeError(response, HttpStatus.UNAUTHORIZED, ErrorCode.UNAUTHORIZED);
                         })
                         .accessDeniedHandler((request, response, e) -> {

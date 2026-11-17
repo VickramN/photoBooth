@@ -8,7 +8,11 @@ import com.example.photoBooth.entity.User;
 import com.example.photoBooth.security.UserPrincipal;
 import com.example.photoBooth.service.AlbumService;
 import com.example.photoBooth.service.ImageService;
+
+import jakarta.servlet.http.Cookie;
+
 import com.example.photoBooth.security.JwtService;
+import com.example.photoBooth.security.SessionCookies;
 import com.example.photoBooth.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -326,7 +330,7 @@ class AlbumControllerTest {
 
                 mockMvc.perform(get("/albums"))
                                 .andExpect(status().isUnauthorized())
-                                .andExpect(header().string("WWW-Authenticate", "Bearer"))
+                                .andExpect(header().doesNotExist("WWW-Authenticate"))
                                 .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
 
                 verifyNoInteractions(albumService);
@@ -476,7 +480,7 @@ class AlbumControllerTest {
                                 .thenThrow(new io.jsonwebtoken.MalformedJwtException("bad token"));
 
                 mockMvc.perform(get("/albums")
-                                .header("Authorization", "Bearer garbage"))
+                                .cookie(new Cookie(SessionCookies.NAME, "garbage")))
                                 .andExpect(status().isUnauthorized())
                                 .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
 

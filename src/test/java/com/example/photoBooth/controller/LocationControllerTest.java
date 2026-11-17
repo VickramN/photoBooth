@@ -190,7 +190,7 @@ public class LocationControllerTest {
                                 .param("city", "Paris")
                                 .param("country", "France"))
                                 .andExpect(status().isUnauthorized())
-                                .andExpect(header().string("WWW-Authenticate", "Bearer"))
+                                .andExpect(header().doesNotExist("WWW-Authenticate"))
                                 .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
 
                 verifyNoInteractions(geocodingService);

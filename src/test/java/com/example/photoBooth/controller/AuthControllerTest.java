@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -18,14 +19,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.example.photoBooth.config.SecurityConfig;
 import com.example.photoBooth.repository.UserRepository;
+import com.example.photoBooth.security.JwtProperties;
 import com.example.photoBooth.security.JwtService;
 import com.example.photoBooth.security.RequestRateLimiter;
+import com.example.photoBooth.security.SessionCookies;
 import com.example.photoBooth.security.RateLimit;
 import com.example.photoBooth.security.RateLimitedException;
 import com.example.photoBooth.service.AuthService;
 
 @WebMvcTest(AuthController.class)
-@Import(SecurityConfig.class)
+@Import({ SecurityConfig.class, SessionCookies.class })
 public class AuthControllerTest {
 
         @Autowired
@@ -42,6 +45,14 @@ public class AuthControllerTest {
 
         @MockitoBean
         private RequestRateLimiter requestRateLimiter;
+
+        @MockitoBean
+        private JwtProperties jwtProperties;
+
+        @BeforeEach
+        void setUp() {
+                when(jwtProperties.getExpirationMs()).thenReturn(3_600_000L);
+        }
 
         @Test
         void registerReturnsCreatedWhenRequestIsValid() throws Exception {
@@ -81,16 +92,21 @@ public class AuthControllerTest {
         }
 
         @Test
-        void loginReturnsSuccessWhenValidLogin() throws Exception {
+        void loginSetsSessionCookieAndReturnsNoBody() throws Exception {
                 when(authService.login("alice", "SomePass!23"))
                                 .thenReturn("test-token");
 
                 mockMvc.perform(post("/auth/login")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"username\": \"alice\", \"password\": \"SomePass!23\"}"))
-                                .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.token").value("test-token"));
-
+                                .andExpect(status().isNoContent())
+                                .andExpect(cookie().value(SessionCookies.NAME, "test-token"))
+                                .andExpect(cookie().maxAge(SessionCookies.NAME, 3600))
+                                .andExpect(cookie().httpOnly(SessionCookies.NAME, true))
+                                .andExpect(cookie().secure(SessionCookies.NAME, true))
+                                .andExpect(cookie().sameSite(SessionCookies.NAME, "Lax"))
+                                .andExpect(cookie().path(SessionCookies.NAME, "/"))
+                                .andExpect(content().string(""));
         }
 
         @Test
@@ -102,7 +118,8 @@ public class AuthControllerTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"username\": \"alice\", \"password\": \"wrongPassword\"}"))
                                 .andExpect(status().isUnauthorized())
-                                .andExpect(jsonPath("$.error").value("INVALID_CREDENTIALS"));
+                                .andExpect(jsonPath("$.error").value("INVALID_CREDENTIALS"))
+                                .andExpect(cookie().doesNotExist(SessionCookies.NAME));
 
         }
 
@@ -115,7 +132,8 @@ public class AuthControllerTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"username\": \"alice\", \"password\": \"SomePass!23\"}"))
                                 .andExpect(status().isUnauthorized())
-                                .andExpect(jsonPath("$.error").value("INVALID_CREDENTIALS"));
+                                .andExpect(jsonPath("$.error").value("INVALID_CREDENTIALS"))
+                                .andExpect(cookie().doesNotExist(SessionCookies.NAME));
 
         }
 
@@ -191,7 +209,7 @@ public class AuthControllerTest {
                 mockMvc.perform(post("/auth/login")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"username\": \"alice\", \"password\": \"SomePass!23\"}"))
-                                .andExpect(status().isOk());
+                                .andExpect(status().isNoContent());
 
                 verify(requestRateLimiter, never()).recordFailure(any(), any());
         }
@@ -229,6 +247,15 @@ public class AuthControllerTest {
 
                 verifyNoInteractions(authService);
                 verifyNoInteractions(requestRateLimiter);
+        }
+
+        @Test
+        void logoutShouldClearSessionCookie() throws Exception {
+                mockMvc.perform(post("/auth/logout"))
+                                .andExpect(status().isNoContent())
+                                .andExpect(cookie().maxAge(SessionCookies.NAME, 0))
+                                .andExpect(cookie().value(SessionCookies.NAME, ""))
+                                .andExpect(cookie().path(SessionCookies.NAME, "/"));
         }
 
 }
