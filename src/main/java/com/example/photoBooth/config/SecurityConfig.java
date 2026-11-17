@@ -2,6 +2,7 @@ package com.example.photoBooth.config;
 
 import com.example.photoBooth.api.ErrorCode;
 import com.example.photoBooth.security.JwtAuthenticationFilter;
+import com.example.photoBooth.security.SpaCsrfTokenRequestHandler;
 
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -23,6 +24,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -46,7 +49,9 @@ public class SecurityConfig {
             JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         return http
                 .cors(Customizer.withDefaults())
-                .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/error").permitAll()
@@ -58,7 +63,10 @@ public class SecurityConfig {
                             writeError(response, HttpStatus.UNAUTHORIZED, ErrorCode.UNAUTHORIZED);
                         })
                         .accessDeniedHandler((request, response, e) -> {
-                            writeError(response, HttpStatus.FORBIDDEN, ErrorCode.FORBIDDEN);
+                            ErrorCode code = (e instanceof CsrfException)
+                                    ? ErrorCode.CSRF_TOKEN_INVALID
+                                    : ErrorCode.FORBIDDEN;
+                            writeError(response, HttpStatus.FORBIDDEN, code);
                         }))
 
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

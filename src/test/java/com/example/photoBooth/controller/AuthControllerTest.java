@@ -12,8 +12,11 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -57,6 +60,7 @@ public class AuthControllerTest {
         @Test
         void registerReturnsCreatedWhenRequestIsValid() throws Exception {
                 mockMvc.perform(post("/auth/register")
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"username\": \"newuser\", \"password\": \"SomePass123!\"}"))
                                 .andExpect(status().isCreated());
@@ -71,6 +75,7 @@ public class AuthControllerTest {
                                 .when(authService).register("newuser", "SomePass123!");
 
                 mockMvc.perform(post("/auth/register")
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"username\": \"newuser\", \"password\": \"SomePass123!\"}"))
                                 .andExpect(status().isConflict())
@@ -81,6 +86,7 @@ public class AuthControllerTest {
         void registerReturnsBadRequestWhenPasswordMissing() throws Exception {
 
                 mockMvc.perform(post("/auth/register")
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"username\": \"someone\"}"))
                                 .andExpect(status().isBadRequest())
@@ -97,6 +103,7 @@ public class AuthControllerTest {
                                 .thenReturn("test-token");
 
                 mockMvc.perform(post("/auth/login")
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"username\": \"alice\", \"password\": \"SomePass!23\"}"))
                                 .andExpect(status().isNoContent())
@@ -115,6 +122,7 @@ public class AuthControllerTest {
                                 .thenThrow(new BadCredentialsException("Bad Credentials"));
 
                 mockMvc.perform(post("/auth/login")
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"username\": \"alice\", \"password\": \"wrongPassword\"}"))
                                 .andExpect(status().isUnauthorized())
@@ -129,6 +137,7 @@ public class AuthControllerTest {
                                 .thenThrow(new DisabledException("User is disabled"));
 
                 mockMvc.perform(post("/auth/login")
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"username\": \"alice\", \"password\": \"SomePass!23\"}"))
                                 .andExpect(status().isUnauthorized())
@@ -143,6 +152,7 @@ public class AuthControllerTest {
                                 .when(authService).resetPassword("invalid-token", "newPassword");
 
                 mockMvc.perform(post("/auth/reset-password")
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{ \"token\": \"invalid-token\", \"newPassword\": \"newPassword\"}"))
                                 .andExpect(status().isBadRequest())
@@ -153,6 +163,7 @@ public class AuthControllerTest {
         void forgotPasswordReturnsSuccessWhenUnknownUser() throws Exception {
 
                 mockMvc.perform(post("/auth/forgot-password")
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"username\": \"nobody\"}"))
                                 .andExpect(status().isOk())
@@ -167,6 +178,7 @@ public class AuthControllerTest {
                                 .when(requestRateLimiter).consume(eq(RateLimit.LOGIN_IP), any());
 
                 mockMvc.perform(post("/auth/login")
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"username\": \"alice\", \"password\": \"SomePass!23\"}"))
                                 .andExpect(status().isTooManyRequests())
@@ -182,6 +194,7 @@ public class AuthControllerTest {
                                 .when(requestRateLimiter).requireAvailable(RateLimit.LOGIN_FAILURES_USERNAME, "alice");
 
                 mockMvc.perform(post("/auth/login")
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"username\": \"alice\", \"password\": \"SomePass!23\"}"))
                                 .andExpect(status().isTooManyRequests());
@@ -195,6 +208,7 @@ public class AuthControllerTest {
                                 .thenThrow(new BadCredentialsException("bad"));
 
                 mockMvc.perform(post("/auth/login")
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"username\": \"alice\", \"password\": \"WrongPass!1\"}"))
                                 .andExpect(status().isUnauthorized());
@@ -207,6 +221,7 @@ public class AuthControllerTest {
                 when(authService.login("alice", "SomePass!23")).thenReturn("test-token");
 
                 mockMvc.perform(post("/auth/login")
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"username\": \"alice\", \"password\": \"SomePass!23\"}"))
                                 .andExpect(status().isNoContent());
@@ -217,6 +232,7 @@ public class AuthControllerTest {
         @Test
         void forgotPasswordReturnsBadRequestWhenUsernameBlank() throws Exception {
                 mockMvc.perform(post("/auth/forgot-password")
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"username\": \"  \"}"))
                                 .andExpect(status().isBadRequest())
@@ -228,6 +244,7 @@ public class AuthControllerTest {
         @Test
         void registerRejectsUsernameWithNewline() throws Exception {
                 mockMvc.perform(post("/auth/register")
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"username\": \"ali\\nce\", \"password\": \"SomePass123!\"}"))
                                 .andExpect(status().isBadRequest())
@@ -240,6 +257,7 @@ public class AuthControllerTest {
         @Test
         void loginRejectsUsernameWithNewlineBeforeRateLimiting() throws Exception {
                 mockMvc.perform(post("/auth/login")
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"username\": \"alice\\nINFO forged line\", \"password\": \"SomePass!23\"}"))
                                 .andExpect(status().isBadRequest())
@@ -251,11 +269,45 @@ public class AuthControllerTest {
 
         @Test
         void logoutShouldClearSessionCookie() throws Exception {
-                mockMvc.perform(post("/auth/logout"))
+                mockMvc.perform(post("/auth/logout")
+                                .with(csrf()))
                                 .andExpect(status().isNoContent())
                                 .andExpect(cookie().maxAge(SessionCookies.NAME, 0))
                                 .andExpect(cookie().value(SessionCookies.NAME, ""))
                                 .andExpect(cookie().path(SessionCookies.NAME, "/"));
+        }
+
+        @Test
+        void loginWithoutCsrfTokenIsRejected() throws Exception {
+                mockMvc.perform(post("/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"username\": \"alice\", \"password\": \"SomePass!23\"}"))
+                                .andExpect(status().isForbidden())
+                                .andExpect(jsonPath("$.error").value("CSRF_TOKEN_INVALID"))
+                                .andExpect(cookie().doesNotExist(SessionCookies.NAME));
+
+                verifyNoInteractions(authService);
+        }
+
+        @Test
+        void loginWithWrongCsrfTokenIsRejected() throws Exception {
+                mockMvc.perform(post("/auth/login")
+                                .with(csrf().useInvalidToken())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"username\": \"alice\", \"password\": \"SomePass!23\"}"))
+                                .andExpect(status().isForbidden())
+                                .andExpect(jsonPath("$.error").value("CSRF_TOKEN_INVALID"));
+
+                verifyNoInteractions(authService);
+        }
+
+        @Test
+        @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
+        void csrfEndpointIssuesReadableTokenCookie() throws Exception {
+                mockMvc.perform(get("/auth/csrf"))
+                                .andExpect(status().isNoContent())
+                                .andExpect(cookie().exists("XSRF-TOKEN"))
+                                .andExpect(cookie().httpOnly("XSRF-TOKEN", false));
         }
 
 }

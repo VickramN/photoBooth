@@ -17,6 +17,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -103,4 +104,12 @@ public class AuthController {
             throw new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_RESET_TOKEN);
         }
     }
+
+    @GetMapping("/csrf")
+    public ResponseEntity<Void> csrf(CsrfToken csrfToken) {
+        // resolving the token makes Spring write the XSRF-TOKEN cookie
+        csrfToken.getToken();
+        return ResponseEntity.noContent().build();
+    }
+
 }

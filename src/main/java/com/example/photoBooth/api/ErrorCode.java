@@ -15,6 +15,7 @@ public enum ErrorCode {
     USERNAME_TAKEN,
     INVALID_CREDENTIALS,
     INVALID_RESET_TOKEN,
+    CSRF_TOKEN_INVALID,
 
     // Admin
     USER_NOT_FOUND,

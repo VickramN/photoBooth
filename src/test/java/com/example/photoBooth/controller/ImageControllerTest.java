@@ -28,6 +28,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -105,7 +106,8 @@ class ImageControllerTest {
 
                 mockMvc.perform(multipart("/albums/" + ALBUM_ID + "/images")
                                 .file(file)
-                                .with(user(principal())))
+                                .with(user(principal()))
+                                .with(csrf()))
                                 .andExpect(status().isCreated())
                                 .andExpect(jsonPath("$.id").value(IMAGE_ID.toString()))
                                 .andExpect(jsonPath("$.url").value("https://presigned.example/z.jpg"));
@@ -120,7 +122,8 @@ class ImageControllerTest {
 
                 mockMvc.perform(multipart("/albums/" + MISSING_ALBUM_ID + "/images")
                                 .file(file)
-                                .with(user(principal())))
+                                .with(user(principal()))
+                                .with(csrf()))
                                 .andExpect(status().isNotFound())
                                 .andExpect(jsonPath("$.error").value("ALBUM_NOT_FOUND"));
         }
@@ -134,7 +137,8 @@ class ImageControllerTest {
 
                 mockMvc.perform(multipart("/albums/" + ALBUM_ID + "/images")
                                 .file(file)
-                                .with(user(principal())))
+                                .with(user(principal()))
+                                .with(csrf()))
                                 .andExpect(status().isTooManyRequests())
                                 .andExpect(jsonPath("$.error").value("RATE_LIMITED"));
         }
@@ -148,7 +152,8 @@ class ImageControllerTest {
 
                 mockMvc.perform(multipart("/albums/" + ALBUM_ID + "/images")
                                 .file(file)
-                                .with(user(principal())))
+                                .with(user(principal()))
+                                .with(csrf()))
                                 .andExpect(status().isBadRequest())
                                 .andExpect(jsonPath("$.error").value("FILE_TOO_LARGE"));
         }
@@ -162,7 +167,8 @@ class ImageControllerTest {
 
                 mockMvc.perform(multipart("/albums/" + ALBUM_ID + "/images")
                                 .file(file)
-                                .with(user(principal())))
+                                .with(user(principal()))
+                                .with(csrf()))
                                 .andExpect(status().isBadRequest())
                                 .andExpect(jsonPath("$.error").value("INVALID_IMAGE_TYPE"));
         }
@@ -176,7 +182,8 @@ class ImageControllerTest {
 
                 mockMvc.perform(multipart("/albums/" + ALBUM_ID + "/images")
                                 .file(file)
-                                .with(user(principal())))
+                                .with(user(principal()))
+                                .with(csrf()))
                                 .andExpect(status().isUnprocessableContent())
                                 .andExpect(jsonPath("$.error").value("INFECTED_FILE"));
         }
@@ -184,7 +191,8 @@ class ImageControllerTest {
         @Test
         void createImageShouldReturnBadRequestWhenFileMissing() throws Exception {
                 mockMvc.perform(multipart("/albums/{id}/images", ALBUM_ID)
-                                .with(user(principal())))
+                                .with(user(principal()))
+                                .with(csrf()))
                                 .andExpect(status().isBadRequest())
                                 .andExpect(jsonPath("$.error").value("MISSING_PARAMETER"));
 
@@ -196,7 +204,8 @@ class ImageControllerTest {
                 when(imageService.deleteByAlbumIdAndImageId(ALBUM_ID, IMAGE_ID, OWNER_ID)).thenReturn(true);
 
                 mockMvc.perform(delete("/albums/" + ALBUM_ID + "/images/" + IMAGE_ID)
-                                .with(user(principal())))
+                                .with(user(principal()))
+                                .with(csrf()))
                                 .andExpect(status().isNoContent());
         }
 
@@ -205,7 +214,8 @@ class ImageControllerTest {
                 when(imageService.deleteByAlbumIdAndImageId(ALBUM_ID, IMAGE_ID, OWNER_ID)).thenReturn(false);
 
                 mockMvc.perform(delete("/albums/" + ALBUM_ID + "/images/" + IMAGE_ID)
-                                .with(user(principal())))
+                                .with(user(principal()))
+                                .with(csrf()))
                                 .andExpect(status().isNotFound())
                                 .andExpect(jsonPath("$.error").value("IMAGE_NOT_FOUND"));
         }

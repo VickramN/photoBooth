@@ -37,6 +37,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -134,6 +135,7 @@ class AlbumControllerTest {
 
                 mockMvc.perform(post("/albums")
                                 .with(user(principal()))
+                                .with(csrf())
                                 .contentType("application/json")
                                 .content("{\"albumName\":\"Test Album\",\"cityName\":\"Oswego\",\"countryName\":\"USA\", \"lat\":43.4553,\"lang\":-76.5105}"))
                                 .andExpect(status().isCreated())
@@ -152,6 +154,7 @@ class AlbumControllerTest {
 
                 mockMvc.perform(post("/albums")
                                 .with(user(principal()))
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"albumName\":\"\",\"cityName\":\"Oswego\",\"countryName\":\"USA\", \"lat\":43.4553,\"lang\":-76.5105}"))
                                 .andExpect(status().isBadRequest())
@@ -170,6 +173,7 @@ class AlbumControllerTest {
 
                 mockMvc.perform(post("/albums")
                                 .with(user(principal()))
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""
                                                 {"albumName":"Test Album","cityName":"Oswego","countryName":"USA","lang":-76.5105}
@@ -187,6 +191,7 @@ class AlbumControllerTest {
 
                 mockMvc.perform(post("/albums")
                                 .with(user(principal()))
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""
                                                 {"albumName":"Test Album","cityName":"Oswego","countryName":"USA","lat":90.1,"lang":-76.5105}
@@ -204,6 +209,7 @@ class AlbumControllerTest {
 
                 mockMvc.perform(post("/albums")
                                 .with(user(principal()))
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""
                                                 {"albumName":"Test Album","cityName":"Oswego","countryName":"USA","lat":43.4553,"lang":180.1}
@@ -226,6 +232,7 @@ class AlbumControllerTest {
 
                 mockMvc.perform(post("/albums")
                                 .with(user(principal()))
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""
                                                 {"albumName":"Edge of the Map","cityName":"North Pole","countryName":"Arctic","lat":90,"lang":180}
@@ -243,7 +250,8 @@ class AlbumControllerTest {
                 when(albumService.deleteById(ALBUM_ID, OWNER_ID)).thenReturn(true);
 
                 mockMvc.perform(delete("/albums/" + ALBUM_ID)
-                                .with(user(principal())))
+                                .with(user(principal()))
+                                .with(csrf()))
                                 .andExpect(status().isNoContent());
 
                 verify(albumService).deleteById(ALBUM_ID, OWNER_ID);
@@ -254,7 +262,8 @@ class AlbumControllerTest {
                 when(albumService.deleteById(MISSING_ID, OWNER_ID)).thenReturn(false);
 
                 mockMvc.perform(delete("/albums/" + MISSING_ID)
-                                .with(user(principal())))
+                                .with(user(principal()))
+                                .with(csrf()))
                                 .andExpect(status().isNotFound())
                                 .andExpect(jsonPath("$.error").value("ALBUM_NOT_FOUND"));
 
@@ -402,6 +411,7 @@ class AlbumControllerTest {
 
                 mockMvc.perform(post("/albums")
                                 .with(user(principal()))
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""
                                                 {"albumName":"Springfield Trip","cityName":"Springfield","regionName":"Missouri",
@@ -423,6 +433,7 @@ class AlbumControllerTest {
 
                 mockMvc.perform(post("/albums")
                                 .with(user(principal()))
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""
                                                 {"albumName":"Singapore","cityName":"Singapore","regionName":"   ",
@@ -440,6 +451,7 @@ class AlbumControllerTest {
         void createAlbumShouldRejectMalformedRegionCode() throws Exception {
                 mockMvc.perform(post("/albums")
                                 .with(user(principal()))
+                                .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""
                                                 {"albumName":"Test Album","cityName":"Oswego","regionName":"New York",
@@ -507,5 +519,17 @@ class AlbumControllerTest {
                                 .header("Access-Control-Request-Method", "POST"))
                                 .andExpect(status().isForbidden())
                                 .andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
+        }
+
+        @Test
+        void createAlbumWithoutCsrfTokenIsRejected() throws Exception {
+                mockMvc.perform(post("/albums")
+                                .with(user(principal()))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"albumName\": \"Trip\", \"cityName\": \"Paris\", \"countryName\": \"France\", \"lat\": 48.85, \"lang\": 2.35}"))
+                                .andExpect(status().isForbidden())
+                                .andExpect(jsonPath("$.error").value("CSRF_TOKEN_INVALID"));
+
+                verifyNoInteractions(albumService);
         }
 }
