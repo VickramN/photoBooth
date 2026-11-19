@@ -1,6 +1,5 @@
 package com.example.photoBooth.controller;
 
-import com.example.photoBooth.api.AuthResponse;
 import com.example.photoBooth.api.ForgotPasswordRequest;
 import com.example.photoBooth.api.ResetPasswordRequest;
 import com.example.photoBooth.security.RateLimit;
@@ -57,7 +56,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request,
+    public ResponseEntity<Void> login(@Valid @RequestBody LoginRequest request,
             HttpServletRequest httpRequest) {
         requestRateLimiter.consume(RateLimit.LOGIN_IP, httpRequest.getRemoteAddr());
         requestRateLimiter.requireAvailable(RateLimit.LOGIN_FAILURES_USERNAME, request.getUsername());
